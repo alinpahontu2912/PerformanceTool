@@ -5,6 +5,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
+using System.Linq;
+using static BenchTask;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 public partial class Program
 {
@@ -24,6 +28,8 @@ public partial class Program
     internal static async Task<string> doSomth()
     {
         QuerySolver querySolver = new();
+        List<GraphData> list = new();
+        var options = new JsonSerializerOptions { IncludeFields = true };
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
@@ -34,6 +40,7 @@ public partial class Program
             var logUrl = lines[i].Replace("results.json", "git-log.txt");
             var content = await querySolver.solveQuery(main + logUrl);
             var flavorData = new FlavorData(main + fileUrl, getFlavor(fileUrl), json, content);
+            
             ResultsData resultsData;
             if (timedResults.ContainsKey(flavorData.commitTime))
                 resultsData = timedResults[flavorData.commitTime];
@@ -47,16 +54,29 @@ public partial class Program
         StringBuilder stringBuilder = new();
         foreach (var item in timedResults)
         {
-            Console.WriteLine(item.Key);
-            stringBuilder.Append(item.Key + "\n");
-            foreach (var elem in item.Value.results.Keys)
-            {
-                stringBuilder.Append(elem + "\n" + item.Value.results[elem]);
-                Console.WriteLine(elem + "\n" + item.Value.results[elem]);
+            var value = item.Value;
+            var key = item.Key;
+            var testList = value.results.Values;
+            foreach (var test in testList) {
+                list.Add(new GraphData(test));
+                /*string jsonObj = JsonSerializer.Serialize(new GraphData(test), options);
+                Console.WriteLine(jsonObj);
+                stringBuilder.Append(jsonObj);*/
             }
+
         }
-        return stringBuilder.ToString();
+        string jsonArray = JsonSerializer.Serialize(list, options);
+        return jsonArray;
     }
+
+
+    internal static DateTimeOffset GetLastDates(SortedDictionary<DateTimeOffset, ResultsData> sortedDictionary)
+    {
+        /*List<DateTimeOffset> dateTimes = new();
+        dateTimes = sortedDictionary.Keys.ToList();*/
+        return sortedDictionary.First().Key;
+    }
+
     internal class QuerySolver
     {
         public HttpClient client;

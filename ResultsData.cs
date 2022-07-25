@@ -105,5 +105,17 @@ namespace WasmBenchmarkResults
     {
         public Dictionary<string, FlavorData> results = new();
     }
+
+    internal class GraphData {
+        public DateTimeOffset dateTime;
+        public Dictionary<string, double> minTimes;
+        public string flavor;
+
+        public GraphData(FlavorData flavorData) {
+            dateTime = flavorData.commitTime;
+            minTimes = flavorData.results.minTimes;
+            flavor = flavorData.flavor;
+        }
+    }
 }
 
