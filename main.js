@@ -10,9 +10,14 @@ App.main = async function (applicationArguments) {
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
     const promise = exports.MyClass.testMe();
     promise.then(value => {
-        console.log(value);
-        document.getElementById("out").innerHTML = `${value}`;
+        var data = d3.csvParse(value);
+        console.log(typeof data);
+        for (let i = 0; i < data.length; i++) {
+            console.log(data[i]);
+        }
     });
-    // const test = exports.MyClass.testList();
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
+
+    
 }
+

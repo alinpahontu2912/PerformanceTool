@@ -9,6 +9,7 @@ using System.Linq;
 using static BenchTask;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.IO;
 
 public partial class Program
 {
@@ -33,14 +34,14 @@ public partial class Program
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
-        for (var i = 0; i < lines.Length - 1; i++)
+        for (var i = 0; i < 1; i++)
         {
             var fileUrl = lines[i];
             var json = await querySolver.solveQuery(main + fileUrl);
             var logUrl = lines[i].Replace("results.json", "git-log.txt");
             var content = await querySolver.solveQuery(main + logUrl);
             var flavorData = new FlavorData(main + fileUrl, getFlavor(fileUrl), json, content);
-            
+
             ResultsData resultsData;
             if (timedResults.ContainsKey(flavorData.commitTime))
                 resultsData = timedResults[flavorData.commitTime];
@@ -51,30 +52,51 @@ public partial class Program
             }
             resultsData.results[flavorData.flavor] = flavorData;
         }
-        StringBuilder stringBuilder = new();
-        foreach (var item in timedResults)
+        return ExportCSV(timedResults);
+    }
+    internal static string ExportCSV(SortedDictionary<DateTimeOffset, ResultsData> timedPaths, string flavor = "aot.default.chrome")
+    {
+        var sw = new StringBuilder();
         {
-            var value = item.Value;
-            var key = item.Key;
-            var testList = value.results.Values;
-            foreach (var test in testList) {
-                list.Add(new GraphData(test));
-                /*string jsonObj = JsonSerializer.Serialize(new GraphData(test), options);
-                Console.WriteLine(jsonObj);
-                stringBuilder.Append(jsonObj);*/
+            SortedDictionary<DateTimeOffset, FlavorData> flavoredData = new();
+            SortedSet<string> labels = new();
+            foreach (var pair in timedPaths)
+            {
+                if (!pair.Value.results.ContainsKey(flavor))
+                    continue;
+
+                var fd = pair.Value.results[flavor];
+                flavoredData[fd.commitTime] = fd;
+                Console.WriteLine($"date: {fd.commitTime} path: {fd.origin}");
+                labels.UnionWith(fd.MeasurementLabels);
             }
 
+            foreach (var l in labels)
+                Console.WriteLine($"l: {l}");
+
+            sw.Append($"Task - Measurement");
+            foreach (var d in flavoredData.Keys)
+            {
+                sw.Append($",{d.Date.ToShortDateString()}");
+            }
+
+            sw.Append("\n");
+
+            foreach (var l in labels)
+            {
+                sw.Append($"{l.Replace(",", " -")}");
+
+                foreach (var p in flavoredData)
+                {
+                    var mt = p.Value.results.minTimes;
+                    var v = mt.ContainsKey(l) ? mt[l].ToString() : "N/A";
+                    sw.Append($",{v}");
+                }
+
+                sw.Append("\n");
+            }
+            return sw.ToString();
         }
-        string jsonArray = JsonSerializer.Serialize(list, options);
-        return jsonArray;
-    }
-
-
-    internal static DateTimeOffset GetLastDates(SortedDictionary<DateTimeOffset, ResultsData> sortedDictionary)
-    {
-        /*List<DateTimeOffset> dateTimes = new();
-        dateTimes = sortedDictionary.Keys.ToList();*/
-        return sortedDictionary.First().Key;
     }
 
     internal class QuerySolver
