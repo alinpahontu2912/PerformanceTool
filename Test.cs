@@ -29,7 +29,7 @@ public partial class Program
     internal static async Task<string> doSomth()
     {
         QuerySolver querySolver = new();
-        List<GraphData> list = new();
+        List<GraphPointData> list = new();
         var options = new JsonSerializerOptions { IncludeFields = true };
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
@@ -41,7 +41,10 @@ public partial class Program
             var logUrl = lines[i].Replace("results.json", "git-log.txt");
             var content = await querySolver.solveQuery(main + logUrl);
             var flavorData = new FlavorData(main + fileUrl, getFlavor(fileUrl), json, content);
-
+            foreach (var item in flavorData.results.minTimes)
+            {
+                list.Add(new GraphPointData(flavorData.commitTime.Date.ToShortDateString(), flavorData.flavor, item));
+            }
             ResultsData resultsData;
             if (timedResults.ContainsKey(flavorData.commitTime))
                 resultsData = timedResults[flavorData.commitTime];
@@ -52,7 +55,9 @@ public partial class Program
             }
             resultsData.results[flavorData.flavor] = flavorData;
         }
-        return ExportCSV(timedResults);
+        var jsonData = JsonSerializer.Serialize(list, options);
+        return jsonData;
+        //return ExportCSV(timedResults);
     }
     internal static string ExportCSV(SortedDictionary<DateTimeOffset, ResultsData> timedPaths, string flavor = "aot.default.chrome")
     {
@@ -74,7 +79,7 @@ public partial class Program
             foreach (var l in labels)
                 Console.WriteLine($"l: {l}");
 
-            sw.Append($"Task - Measurement");
+            sw.Append($"taskname");
             foreach (var d in flavoredData.Keys)
             {
                 sw.Append($",{d.Date.ToShortDateString()}");
