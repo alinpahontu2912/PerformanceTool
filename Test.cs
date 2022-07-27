@@ -26,7 +26,7 @@ public partial class Program
         return stringBuilder.ToString().Remove(stringBuilder.Length - 1);
     }
 
-    internal static async Task<string> doSomth()
+    internal static async Task<string> doSomth(int numOfDays = 14, int numOfTests = 24, string flavor = "aot.default.chrome")
     {
         QuerySolver querySolver = new();
         List<GraphPointData> list = new();
@@ -34,7 +34,7 @@ public partial class Program
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
-        for (var i = 0; i < 1; i++)
+        for (var i = 0; i < lines.Length - 1; i++)
         {
             var fileUrl = lines[i];
             var json = await querySolver.solveQuery(main + fileUrl);
@@ -55,10 +55,13 @@ public partial class Program
             }
             resultsData.results[flavorData.flavor] = flavorData;
         }
-        var jsonData = JsonSerializer.Serialize(list, options);
+
+        list = list.OrderByDescending(x => DateTime.Parse(x.dateTime)).ToList();
+        list.RemoveAll(x => x.flavor != flavor);
+        var jsonData = JsonSerializer.Serialize(list.Take(numOfDays * numOfTests), options);
         return jsonData;
-        //return ExportCSV(timedResults);
     }
+
     internal static string ExportCSV(SortedDictionary<DateTimeOffset, ResultsData> timedPaths, string flavor = "aot.default.chrome")
     {
         var sw = new StringBuilder();

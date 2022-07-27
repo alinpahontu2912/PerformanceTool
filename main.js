@@ -11,17 +11,19 @@ App.main = async function (applicationArguments) {
     const promise = exports.MyClass.testMe();
     promise.then(value => {
         var data = JSON.parse(value);
-        var xDomain = [];
-        for (let i = 0; i < data.length; i++) {
-            xDomain.push(data[i].taskname);
-            console.log(data[i]);
+        var firstTry = [];
+        var secondTry = [];
+        for (let i = 0; i < data.length - 1; i += 24) {
+            firstTry.push(data[i]);
+            secondTry.push(new Date(data[i].dateTime));
+            console.log(typeof data[i].minTime);
+            console.log(typeof data[i].dateTime);
         }
-        console.log(xDomain);
-        var name = data[0].flavor + " " + data[0].commitTime;
-        console.log(name);
+
+        console.log(firstTry);
 
         const margin = { top: 10, right: 30, bottom: 30, left: 60 },
-            width = 4000 - margin.left - margin.right,
+            width = 800 - margin.left - margin.right,
             height = 400 - margin.top - margin.bottom;
 
         // append the svg object to the body of the page
@@ -32,8 +34,8 @@ App.main = async function (applicationArguments) {
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        const x = d3.scaleBand()
-            .domain(xDomain)
+        const x = d3.scaleTime()
+            .domain(d3.extent(firstTry, function (d) { return new Date(d.dateTime); }))
             .range([0, width]);
         svg.append("g")
             .attr("transform", `translate(0, ${height})`)
@@ -41,19 +43,19 @@ App.main = async function (applicationArguments) {
 
         // Add Y axis
         const y = d3.scaleLinear()
-            .domain([0, d3.max(data, function (d) { return d.minTime; })])
+            .domain([0, d3.max(firstTry, function (d) { return +d.minTime; })])
             .range([height, 0]);
         svg.append("g")
             .call(d3.axisLeft(y));
 
         // Add the line
         svg.append("path")
-            .datum(data)
+            .datum(firstTry)
             .attr("fill", "none")
             .attr("stroke", "steelblue")
             .attr("stroke-width", 1.5)
             .attr("d", d3.line()
-                .x(function (d) { return x(d.taskname) })
+                .x(function (d) { return x(new Date(d.dateTime)) })
                 .y(function (d) { return y(d.minTime) })
             );
 
