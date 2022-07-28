@@ -6,10 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
 using System.Linq;
-using static BenchTask;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.IO;
 
 public partial class Program
 {
@@ -26,11 +23,29 @@ public partial class Program
         return stringBuilder.ToString().Remove(stringBuilder.Length - 1);
     }
 
-    internal static async Task<string> doSomth(int numOfDays = 14, int numOfTests = 24, string flavor = "aot.default.chrome")
+    internal static string createJson(SortedDictionary<DateTimeOffset, ResultsData> timedResults)
+    {
+        List<GraphPointData> list = new();
+        foreach (var item in timedResults)
+        {
+            foreach (var pair in item.Value.results)
+            {
+                foreach (var testData in pair.Value.results.minTimes)
+                {
+                    list.Add(new GraphPointData(item.Key.ToString(), pair.Key, testData));
+                }
+            }
+        }
+        var options = new JsonSerializerOptions { IncludeFields = true };
+        var jsonData = JsonSerializer.Serialize(list, options);
+        return jsonData;
+    }
+
+    internal static async Task<string> doSomth()
     {
         QuerySolver querySolver = new();
         List<GraphPointData> list = new();
-        var options = new JsonSerializerOptions { IncludeFields = true };
+        
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
@@ -57,54 +72,7 @@ public partial class Program
         }
 
         list = list.OrderByDescending(x => DateTime.Parse(x.dateTime)).ToList();
-        list.RemoveAll(x => x.flavor != flavor);
-        var jsonData = JsonSerializer.Serialize(list.Take(numOfDays * numOfTests), options);
-        return jsonData;
-    }
-
-    internal static string ExportCSV(SortedDictionary<DateTimeOffset, ResultsData> timedPaths, string flavor = "aot.default.chrome")
-    {
-        var sw = new StringBuilder();
-        {
-            SortedDictionary<DateTimeOffset, FlavorData> flavoredData = new();
-            SortedSet<string> labels = new();
-            foreach (var pair in timedPaths)
-            {
-                if (!pair.Value.results.ContainsKey(flavor))
-                    continue;
-
-                var fd = pair.Value.results[flavor];
-                flavoredData[fd.commitTime] = fd;
-                Console.WriteLine($"date: {fd.commitTime} path: {fd.origin}");
-                labels.UnionWith(fd.MeasurementLabels);
-            }
-
-            foreach (var l in labels)
-                Console.WriteLine($"l: {l}");
-
-            sw.Append($"taskname");
-            foreach (var d in flavoredData.Keys)
-            {
-                sw.Append($",{d.Date.ToShortDateString()}");
-            }
-
-            sw.Append("\n");
-
-            foreach (var l in labels)
-            {
-                sw.Append($"{l.Replace(",", " -")}");
-
-                foreach (var p in flavoredData)
-                {
-                    var mt = p.Value.results.minTimes;
-                    var v = mt.ContainsKey(l) ? mt[l].ToString() : "N/A";
-                    sw.Append($",{v}");
-                }
-
-                sw.Append("\n");
-            }
-            return sw.ToString();
-        }
+        return createJson(timedResults);
     }
 
     internal class QuerySolver
