@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
-using System.Linq;
 using System.Text.Json;
 
 public partial class Program
@@ -44,12 +43,10 @@ public partial class Program
     internal static async Task<string> doSomth()
     {
         QuerySolver querySolver = new();
-        List<GraphPointData> list = new();
-        
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
-        for (var i = 0; i < lines.Length - 1; i++)
+        for (var i = 0; i < 14; i++)
         {
             var fileUrl = lines[i];
             var json = await querySolver.solveQuery(main + fileUrl);
@@ -67,7 +64,6 @@ public partial class Program
             resultsData.results[flavorData.flavor] = flavorData;
         }
 
-        list = list.OrderByDescending(x => DateTime.Parse(x.dateTime)).ToList();
         return createJson(timedResults);
     }
 
