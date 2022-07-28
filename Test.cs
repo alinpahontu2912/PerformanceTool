@@ -56,10 +56,6 @@ public partial class Program
             var logUrl = lines[i].Replace("results.json", "git-log.txt");
             var content = await querySolver.solveQuery(main + logUrl);
             var flavorData = new FlavorData(main + fileUrl, getFlavor(fileUrl), json, content);
-            foreach (var item in flavorData.results.minTimes)
-            {
-                list.Add(new GraphPointData(flavorData.commitTime.Date.ToShortDateString(), flavorData.flavor, item));
-            }
             ResultsData resultsData;
             if (timedResults.ContainsKey(flavorData.commitTime))
                 resultsData = timedResults[flavorData.commitTime];
