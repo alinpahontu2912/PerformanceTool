@@ -19,7 +19,6 @@ App.main = async function (applicationArguments) {
         return array;
     }
 
-
     function buildGraph(dataViz, testData) {
         const margin = { top: 10, right: 30, bottom: 30, left: 60 },
             width = 800 - margin.left - margin.right,
@@ -34,7 +33,7 @@ App.main = async function (applicationArguments) {
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
         const x = d3.scaleTime()
-            .domain(d3.extent(testData, function (d) { return new Date(d.dateTime); }))
+            .domain(d3.extent(testData, function (d) { return new Date(d.commitTime); }))
             .range([0, width]);
         svg.append("g")
             .attr("transform", `translate(0, ${height})`)
@@ -52,16 +51,17 @@ App.main = async function (applicationArguments) {
             .datum(testData)
             .attr("fill", "none")
             .attr("stroke", "steelblue")
-            .attr("stroke-width", 1.5)
+            .attr("stroke-width", 2.5)
             .attr("d", d3.line()
-                .x(function (d) { return x(new Date(d.dateTime)) })
+                .x(function (d) { return x(new Date(d.commitTime)) })
                 .y(function (d) { return y(d.minTime) })
             );
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
-    const promise = exports.MyClass.testMe();
+    const promise = exports.MyClass.loadData();
     promise.then(value => {
+        console.log("nothing");
         var data = JSON.parse(value);
         var wantedData = filterFlavor(data, "aot.default.chrome");
         // -14 * 24 the last tests from the past 14 days       
@@ -69,7 +69,7 @@ App.main = async function (applicationArguments) {
         // console.log(test);
         // 0 for appStart reach managed
         var firstTry = getWantedTestResults(test, 0);
-        // console.log(firstTry);
+        console.log(firstTry);
         buildGraph("#my_dataviz", firstTry);
 
     });

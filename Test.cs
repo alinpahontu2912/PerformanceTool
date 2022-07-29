@@ -5,8 +5,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
-using System.Linq;
 using System.Text.Json;
+using System.IO.Compression;
+using System.IO;
 
 public partial class Program
 {
@@ -23,56 +24,34 @@ public partial class Program
         return stringBuilder.ToString().Remove(stringBuilder.Length - 1);
     }
 
-    internal static string createJson(SortedDictionary<DateTimeOffset, ResultsData> timedResults)
+    internal static async Task<string> loadTests()
     {
-        List<GraphPointData> list = new();
-        foreach (var item in timedResults)
-        {
-            foreach (var pair in item.Value.results)
-            {
-                foreach (var testData in pair.Value.results.minTimes)
-                {
-                    list.Add(new GraphPointData(item.Key.ToString(), pair.Key, testData));
-                }
-            }
-        }
         var options = new JsonSerializerOptions { IncludeFields = true };
+        QuerySolver querySolver = new();
+        SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
+        List<GraphPointData> list = new();
+        var bytes = await querySolver.solveQueryByte(main + "measurements/index.zip");
+        var memoryStream = new MemoryStream(bytes);
+        ZipArchive archive = new ZipArchive(memoryStream);
+        var entry = archive.GetEntry("index.json");
+        Stream readStream = entry.Open();
+        StreamReader streamReader = new StreamReader(readStream);
+        var data = JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
+        for (var i = 0; i < data.Count; i++)
+        {
+            // Atm I'm not doing anything with the gitlog files
+            // var flavor = data[i].flavor.Replace('.', '/');
+            /*var logUrl = main + "measurements/" + data[i].hash + "/" + flavor + "/" + "git-log.txt";
+            var content = await querySolver.solveQueryText(logUrl);*/
+            foreach (var pair in data[i].minTimes)
+            {
+                list.Add(new GraphPointData(data[i].commitTime.ToString(), data[i].flavor, pair));
+            }
+
+
+        }
         var jsonData = JsonSerializer.Serialize(list, options);
         return jsonData;
-    }
-
-    internal static async Task<string> doSomth()
-    {
-        QuerySolver querySolver = new();
-        List<GraphPointData> list = new();
-        
-        SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
-        var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
-        var lines = text.Split("\n");
-        for (var i = 0; i < lines.Length - 1; i++)
-        {
-            var fileUrl = lines[i];
-            var json = await querySolver.solveQuery(main + fileUrl);
-            var logUrl = lines[i].Replace("results.json", "git-log.txt");
-            var content = await querySolver.solveQuery(main + logUrl);
-            var flavorData = new FlavorData(main + fileUrl, getFlavor(fileUrl), json, content);
-            foreach (var item in flavorData.results.minTimes)
-            {
-                list.Add(new GraphPointData(flavorData.commitTime.Date.ToShortDateString(), flavorData.flavor, item));
-            }
-            ResultsData resultsData;
-            if (timedResults.ContainsKey(flavorData.commitTime))
-                resultsData = timedResults[flavorData.commitTime];
-            else
-            {
-                resultsData = new ResultsData();
-                timedResults[flavorData.commitTime] = resultsData;
-            }
-            resultsData.results[flavorData.flavor] = flavorData;
-        }
-
-        list = list.OrderByDescending(x => DateTime.Parse(x.dateTime)).ToList();
-        return createJson(timedResults);
     }
 
     internal class QuerySolver
@@ -84,7 +63,15 @@ public partial class Program
             client.DefaultRequestHeaders.Add("User-Agent", "my-app");
         }
 
-        public async Task<string> solveQuery(string url)
+        public async Task<byte[]> solveQueryByte(string url)
+        {
+            var response = await client.GetAsync(url);
+            if (response.StatusCode != HttpStatusCode.OK)
+                throw new Exception("HTTP request failed with status code " + response.StatusCode + " and message " + response.ReasonPhrase);
+            var text = await response.Content.ReadAsByteArrayAsync();
+            return text;
+        }
+        public async Task<string> solveQueryText(string url)
         {
             var response = await client.GetAsync(url);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -92,6 +79,7 @@ public partial class Program
             var text = await response.Content.ReadAsStringAsync();
             return text;
         }
+
     }
 
 

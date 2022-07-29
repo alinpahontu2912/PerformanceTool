@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices.JavaScript;
-using System.Text;
 using System.Threading.Tasks;
-using WasmBenchmarkResults;
 
 Console.WriteLine("Hello, Browser!");
 
@@ -19,9 +16,9 @@ public partial class MyClass
     }
 
     [JSExport]
-    internal static Task<string> testMe()
+    internal static Task<string> loadData()
     {
-        return Program.doSomth();
+        return Program.loadTests();
     }
 
     [JSImport("window.location.href")]

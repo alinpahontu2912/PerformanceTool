@@ -108,15 +108,15 @@ namespace WasmBenchmarkResults
 
     internal class GraphPointData
     {
-        public string dateTime;
-        public string taskname;
+        public string commitTime;
+        public string taskMeasurementName;
         public double minTime;
         public string flavor;
 
         public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair)
         {
-            dateTime = commitTime;
-            taskname = pair.Key;
+            this.commitTime = commitTime;
+            taskMeasurementName = pair.Key;
             minTime = pair.Value;
             this.flavor = flavor;
         }
