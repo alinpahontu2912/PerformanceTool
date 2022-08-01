@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
+using System.Text.Json;
 
 public partial class Program
 {
@@ -21,13 +22,31 @@ public partial class Program
         return stringBuilder.ToString().Remove(stringBuilder.Length - 1);
     }
 
+    internal static string createJson(SortedDictionary<DateTimeOffset, ResultsData> timedResults)
+    {
+        List<GraphPointData> list = new();
+        foreach (var item in timedResults)
+        {
+            foreach (var pair in item.Value.results)
+            {
+                foreach (var testData in pair.Value.results.minTimes)
+                {
+                    list.Add(new GraphPointData(item.Key.ToString(), pair.Key, testData));
+                }
+            }
+        }
+        var options = new JsonSerializerOptions { IncludeFields = true };
+        var jsonData = JsonSerializer.Serialize(list, options);
+        return jsonData;
+    }
+
     internal static async Task<string> doSomth()
     {
         QuerySolver querySolver = new();
         SortedDictionary<DateTimeOffset, ResultsData> timedResults = new();
         var text = await querySolver.solveQuery(main + "measurements/jsonDataFiles.txt");
         var lines = text.Split("\n");
-        for (var i = 0; i < lines.Length - 1; i++)
+        for (var i = 0; i < 14; i++)
         {
             var fileUrl = lines[i];
             var json = await querySolver.solveQuery(main + fileUrl);
@@ -44,19 +63,10 @@ public partial class Program
             }
             resultsData.results[flavorData.flavor] = flavorData;
         }
-        StringBuilder stringBuilder = new();
-        foreach (var item in timedResults)
-        {
-            Console.WriteLine(item.Key);
-            stringBuilder.Append(item.Key + "\n");
-            foreach (var elem in item.Value.results.Keys)
-            {
-                stringBuilder.Append(elem + "\n" + item.Value.results[elem]);
-                Console.WriteLine(elem + "\n" + item.Value.results[elem]);
-            }
-        }
-        return stringBuilder.ToString();
+
+        return createJson(timedResults);
     }
+
     internal class QuerySolver
     {
         public HttpClient client;

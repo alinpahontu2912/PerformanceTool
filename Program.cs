@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 Console.WriteLine("Hello, Browser!");
 
+
 public partial class MyClass
 {
     [JSExport]
@@ -18,7 +19,7 @@ public partial class MyClass
     internal static Task<string> testMe()
     {
         return Program.doSomth();
-    }  
+    }
 
     [JSImport("window.location.href")]
     internal static partial string GetHRef();

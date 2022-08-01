@@ -105,5 +105,21 @@ namespace WasmBenchmarkResults
     {
         public Dictionary<string, FlavorData> results = new();
     }
+
+    internal class GraphPointData
+    {
+        public string dateTime;
+        public string taskname;
+        public double minTime;
+        public string flavor;
+
+        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair)
+        {
+            dateTime = commitTime;
+            taskname = pair.Key;
+            minTime = pair.Value;
+            this.flavor = flavor;
+        }
+    }
 }
 
