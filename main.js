@@ -7,6 +7,21 @@ App.main = async function (applicationArguments) {
         }
     };
 
+    function mapByFlavor(data) {
+        var obj = data.reduce((map, e) => ({
+            ...map,
+            [e.flavor]: [...(map[e.flavor] ?? []), e]
+        }), {});
+
+        var keys = Object.keys(obj);
+        var newMap = new Map();
+        for (var i = 0; i < keys.length; i++) {
+            newMap.set(keys[i], obj[keys[i]]);
+        }
+        return newMap;
+
+    }
+
     function getWantedTestResults(test, testNumber, numTests = 24) {
         var array = [];
         for (let i = testNumber; i < test.length; i += numTests) {
@@ -31,77 +46,102 @@ App.main = async function (applicationArguments) {
         return result;
     }
 
-    function buildGraph(dataViz, data, keys) {
-        const margin = { top: 10, right: 30, bottom: 30, left: 60 },
+    function buildGraph(data, flavors) {
+        const margin = { top: 30, right: 60, bottom: 30, left: 60 },
             width = 800 - margin.left - margin.right,
             height = 400 - margin.top - margin.bottom;
 
-        // append the svg object to the body of the page
-        const svg = d3.select(dataViz)
-            .append("svg")
+        var dataGroup1 = d3.select("body")
+            .append("div");
+
+        var dataGroup = dataGroup1.append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        //Read the data
+        var filteredData = mapByFlavor(data);
 
-        // group the data: I want to draw one line per group
-        const sumstat = d3.group(data, d => d.flavor); // nest function allows to group the calculation per level of a factor
+        var onZoom = d3.zoom().on("zoom", zoomFunction);
+        function zoomFunction() {
+            dataGroup.attr("transform", d3.zoomTransform(this));
+        }
+        onZoom(dataGroup);
 
-        const allKeys = new Set(data.map(d => d.flavor))
-        // Add X axis --> it is a date format
+        var colors = d3.schemeCategory10;
         const x = d3.scaleTime()
             .domain(d3.extent(data, function (d) { return new Date(d.commitTime); }))
-            .range([0, width]);
-        svg.append("g")
-            .attr("transform", `translate(0, ${height})`)
-            .call(d3.axisBottom(x).ticks(5));
+            .range([0, width])
+            .nice();
 
-        // Add Y axis
         const y = d3.scaleLinear()
             .domain([0, d3.max(data, function (d) { return +d.minTime; })])
-            .range([height, 0]);
-        svg.append("g")
-            .call(d3.axisLeft(y));
+            .range([height, 0])
+            .nice();
 
-        // color palette
-        const color = d3.scaleOrdinal()
-            .range(['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999'])
-
-        // Draw the line
-        svg.selectAll(".line")
-            .data(sumstat)
-            .join("path")
-            .attr("fill", "none")
-            .attr("stroke", function (d) { return color(d[0]) })
-            .attr("stroke-width", 2)
-            .attr("d", function (d) {
-                return d3.line()
+        function plotVariable(color, data) {
+            dataGroup.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 1.5)
+                .attr("d", d3.line()
                     .x(function (d) { return x(new Date(d.commitTime)); })
                     .y(function (d) { return y(+d.minTime); })
-                    (d[1])
+                )
+        }
+
+        function circlePoints(data, color, flavor) {
+            data.forEach(function (point) {
+                for (var i = 0; i < data.length; i++) {
+                    dataGroup.append("circle")
+                        .attr("fill", color)
+                        .attr("r", 3)
+                        .attr("cx", x(new Date(point.commitTime)))
+                        .attr("cy", y(+point.minTime))
+                        .append("title")
+                        .text("Date: " + d3.timeFormat("%Y-%m-%d")(new Date(point.commitTime)) + "\n" + flavor + ": " + +point.minTime);
+
+                }
             });
+        }
 
-        svg.append("text")
-            .attr("x", (width / 2))
-            .attr("y", 10 - (margin.top / 2))
+        for (var i = 0; i < flavors.length; i++) {
+            plotVariable(colors[i], filteredData.get(flavors[i]));
+            circlePoints(filteredData.get(flavors[i]), colors[i], flavors[i]);
+        }
+
+
+        var xAxisGroup = dataGroup
+            .append("g")
+            .attr("class", "xAxisGroup")
+            .attr("transform", "translate(0, " + height + ")");
+
+        var xAxis = d3.axisBottom(x)
+            .tickFormat(d3.timeFormat("%Y-%m-%d"));
+
+        xAxis(xAxisGroup);
+
+        var yAxisGroup = dataGroup
+            .append("g")
+            .attr("class", "yAxisGroup");
+
+        var yAxis = d3.axisLeft(y);
+        yAxis(yAxisGroup);
+
+        d3.selectAll(".xAxisGroup .tick text")
+            .attr("transform", "rotate(-15)");
+
+        var title = dataGroup.append("g");
+        title.append("text")
+            .text(data[0].taskMeasurementName)
+            .attr("font-size", "10pt")
+            .attr("fill", "black")
             .attr("text-anchor", "middle")
-            .style("font-size", "16px")
-            .text(data[0].taskMeasurementName);
+            .attr("x", width / 2)
+            .attr("y", 10 - (margin.top / 2));
 
-        // Add one dot in the legend for each name.
-        svg.selectAll("mylabels")
-            .data(keys)
-            .enter()
-            .append("text")
-            .attr("x", function (d, i) { return 20 + i * 100 })
-            .attr("y", height + 25)
-            .style("fill", function (d) { return color(d) })
-            .style("font-size", "11px")
-            .text(function (d) { return d })
-            .attr("text-anchor", "left")
-            .style("alignment-baseline", "middle")
+
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
@@ -112,7 +152,7 @@ App.main = async function (applicationArguments) {
         var flavors = getFlavors(data);
         // 0 for first test, meaning appStart reach managed 
         var firstTry = getWantedTestResults(wantedData, 0);
-        buildGraph("#my_dataviz", firstTry, flavors);
+        buildGraph(firstTry, flavors);
 
     });
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
