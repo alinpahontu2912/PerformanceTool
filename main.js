@@ -42,15 +42,16 @@ App.main = async function (applicationArguments) {
     }
 
     function circlePoints(dataGroup, data, color, x, y) {
+        var circleGroup = dataGroup.append("g")
+            .attr("class", "circle-click");
         data.forEach(function (point) {
-            dataGroup.append("circle")
+            circleGroup.append("circle")
                 .attr("fill", color)
                 .attr("r", 3)
                 .attr("cx", x(new Date(point.commitTime)))
                 .attr("cy", y(+point.minTime))
                 .append("title")
                 .text("Exact date: " + point.commitTime + "\n" + "Result: " + +point.minTime + " ms");
-
         });
     }
 
@@ -172,11 +173,13 @@ App.main = async function (applicationArguments) {
         var data = JSON.parse(value);
         var wantedData = getLastDaysData(data, 14);
         var flavors = getFlavors(data);
-        // 0 for first test, meaning appStart reach managed 
-        var firstTry = getWantedTestResults(wantedData, 0);
         const margin = { top: 60, right: 80, bottom: 80, left: 100 };
-        buildGraph(firstTry, flavors, 14, margin);
-
+        for (var i = 0; i < 24; i++) {
+            var firstTry = getWantedTestResults(wantedData, i);
+            buildGraph(firstTry, flavors, 14, margin);
+        }
+        // 0 for first test, meaning appStart reach managed
+        
     });
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 
