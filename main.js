@@ -133,9 +133,7 @@ App.main = async function (applicationArguments) {
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
 
-        var dataGroup = d3.select("#graphs")
-            .append("div").style("display", "inline")
-        var dataGroup = d3.select("#graphs")
+        var dataGroup = d3.select("body")
             .append("div")
             .style("display", "inline")
             .append("svg")
