@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using static BenchTask;
 using System.Text;
 
 namespace WasmBenchmarkResults
@@ -25,6 +24,20 @@ namespace WasmBenchmarkResults
             stringBuilder.Append(flavor);
             return stringBuilder.ToString();
         }
+    }
+    public class GraphPointData
+    {
+        public string commitTime;
+        public string taskMeasurementName;
+        public double minTime;
+        public string flavor;
 
+        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair)
+        {
+            this.commitTime = commitTime;
+            taskMeasurementName = pair.Key;
+            minTime = pair.Value;
+            this.flavor = flavor;
+        }
     }
 }
