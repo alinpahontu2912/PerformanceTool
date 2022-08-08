@@ -31,13 +31,15 @@ namespace WasmBenchmarkResults
         public string taskMeasurementName;
         public double minTime;
         public string flavor;
+        public string gitLogUrl;
 
-        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair)
+        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair, string gitLogUrl)
         {
             this.commitTime = commitTime;
             taskMeasurementName = pair.Key;
             minTime = pair.Value;
             this.flavor = flavor;
+            this.gitLogUrl = gitLogUrl;
         }
     }
 }

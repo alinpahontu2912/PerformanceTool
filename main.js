@@ -51,8 +51,12 @@ App.main = async function (applicationArguments) {
                 .attr("r", radius)
                 .attr("cx", x(new Date(point.commitTime)))
                 .attr("cy", y(+point.minTime))
+                .on("click", function () {
+                    window.open(point.gitLogUrl, '_blank');
+                })
                 .append("title")
                 .text("Exact date: " + point.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +point.minTime + " ms");
+
         });
     }
 
@@ -127,15 +131,23 @@ App.main = async function (applicationArguments) {
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
 
+        // create div and add styling to it
         var dataGroup = d3.select("body")
             .append("div")
-            .style("display", "inline")
             .append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
+        function changeSize() {
+            numOfDays = this.value;
+            console.log(this.value);
+
+        }
+        d3.select("#buttonSize").on("input", changeSize);
+
+        // get data by flavor
         var filteredData = mapByFlavor(data);
         var colors = d3.schemeCategory10;
 
@@ -166,7 +178,7 @@ App.main = async function (applicationArguments) {
 
         var startY = (height - flavors.length * 20) / 2 + 20;
         var legend = addLegendBorder(dataGroup, width, startY, flavors);
-        // draw data
+        // add data to graph
         for (var i = 0; i < flavors.length; i++) {
             var escapedFlavor = flavors[i].replaceAll(/[^a-zA-Z]/gi, '');
             plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
@@ -182,7 +194,7 @@ App.main = async function (applicationArguments) {
         // draw axis 
         yAxis(yAxisGroup);
         xAxis(xAxisGroup);
-        // rotate x axis ticks
+        // rotate x axis tick text
         d3.selectAll(".xAxisGroup .tick text")
             .attr("transform", "rotate(-15)");
 
@@ -194,6 +206,7 @@ App.main = async function (applicationArguments) {
         var data = JSON.parse(value);
         var wantedData = getLastDaysData(data, 14);
         var flavors = getFlavors(data);
+        console.log(wantedData);
         const margin = { top: 60, right: 120, bottom: 80, left: 80 };
         for (var i = 0; i < 24; i++) {
             var firstTry = getWantedTestResults(wantedData, i);
