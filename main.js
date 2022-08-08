@@ -41,10 +41,10 @@ App.main = async function (applicationArguments) {
         return result;
     }
 
-    function circlePoints(dataGroup, data, color, x, y, flavor) {
+    function circlePoints(dataGroup, data, color, x, y, flavor, escapedFlavor) {
         var radius = 3;
         var circleGroup = dataGroup.append("g")
-            .attr("class", "circleData");
+            .attr("class", escapedFlavor + "circleData");
         data.forEach(function (point) {
             circleGroup.append("circle")
                 .attr("fill", color)
@@ -54,14 +54,13 @@ App.main = async function (applicationArguments) {
                 .append("title")
                 .text("Exact date: " + point.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +point.minTime + " ms");
         });
-        return circleGroup;
     }
 
-    function plotVariable(dataGroup, color, data, x, y, flavor, taskMeasurementName) {
-        var flavorTestGroup = dataGroup
-            .append("g")
+    function plotVariable(dataGroup, color, data, x, y, flavor, taskMeasurementNumber) {
+        var className = flavor + taskMeasurementNumber;
+        dataGroup.append("g")
             .append("path")
-            .attr("class", flavor + taskMeasurementName)
+            .attr("class", className)
             .datum(data)
             .attr("fill", "none")
             .attr("stroke", color)
@@ -70,7 +69,7 @@ App.main = async function (applicationArguments) {
                 .x(function (d) { return x(new Date(d.commitTime)); })
                 .y(function (d) { return y(+d.minTime); })
             );
-        return flavorTestGroup;
+
     }
 
     function addSimpleText(dataGroup, xCoord, yCoord, textSize, text, color) {
@@ -103,14 +102,9 @@ App.main = async function (applicationArguments) {
         return legend;
     }
 
-    function addLegendContent(legend, lineGroup, circleGroup, xCoord, yCoord, color, flavor, taskMeasurementName) {
-        /*var circleRadius = 5;
-        var textSpacing = 15;
-                legend.append("circle")
-                    .attr("cx", xCoord)
-                    .attr("cy", yCoord)
-                    .attr("r", circleRadius)
-                    .style("fill", color);*/
+    function addLegendContent(legend, xCoord, yCoord, color, flavor, escapedFlavor, taskMeasurementNumber) {
+        var lineClass = "." + escapedFlavor + taskMeasurementNumber;
+        var circleClass = "." + escapedFlavor + "circleData";
         legend.append("text")
             .text(flavor)
             .attr("font-size", "7pt")
@@ -119,16 +113,16 @@ App.main = async function (applicationArguments) {
             .attr("x", xCoord)
             .attr("y", yCoord)
             .on("click", function () {
-                var visibility = lineGroup.style("visibility");
-                lineGroup.transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
-                circleGroup.transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
+                var visibility = d3.select(lineClass).style("visibility");
+                d3.select(lineClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
+                d3.select(circleClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
                 var textStyle = d3.select(this).style("text-decoration");
                 d3.select(this).transition().style("text-decoration", textStyle == "line-through" ? "none" : "line-through");
             });
 
     }
 
-    function buildGraph(data, flavors, numOfDays, margin, taskMeasurementName) {
+    function buildGraph(data, flavors, numOfDays, margin, taskMeasurementNumber) {
 
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
@@ -170,25 +164,25 @@ App.main = async function (applicationArguments) {
 
         var yAxis = d3.axisLeft(y);
 
-        var flavorLineGroups = [];
-        var flavorCircleGroups = [];
-        for (var i = 0; i < flavors.length; i++) {
-            var lineGroup = plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, flavors[i], taskMeasurementName);
-            flavorLineGroups.push(lineGroup);
-            var circleGroup = circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i]);
-            flavorCircleGroups.push(circleGroup);
-        }
-        var title = addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "12pt", data[0].taskMeasurementName, "black");
-        var yAxisName = addSimpleText(dataGroup, 0 - margin.top / 2, 0 - (margin.top / 2) + 10, "12pt", "Results (ms)", "black");
-        var startY = (height - flavors.length * 20) / 2;
+        var startY = (height - flavors.length * 20) / 2 + 20;
         var legend = addLegendBorder(dataGroup, width, startY, flavors);
-
+        // draw data
         for (var i = 0; i < flavors.length; i++) {
-            addLegendContent(legend, flavorLineGroups[i], flavorCircleGroups[i], width + 40, startY + 5, colors[i], flavors[i], taskMeasurementName);
+            var escapedFlavor = flavors[i].replaceAll(/[^a-zA-Z]/gi, '');
+            plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
+            circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor);
+            addLegendContent(legend, width + 40, startY, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
             startY += 15;
         }
+        // title
+        addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "12pt", data[0].taskMeasurementNumber, "black");
+        // y axis legend
+        addSimpleText(dataGroup, 0 - margin.top / 2, 0 - (margin.top / 2) + 10, "12pt", "Results (ms)", "black");
+
+        // draw axis 
         yAxis(yAxisGroup);
         xAxis(xAxisGroup);
+        // rotate x axis ticks
         d3.selectAll(".xAxisGroup .tick text")
             .attr("transform", "rotate(-15)");
 
@@ -203,7 +197,7 @@ App.main = async function (applicationArguments) {
         const margin = { top: 60, right: 120, bottom: 80, left: 80 };
         for (var i = 0; i < 24; i++) {
             var firstTry = getWantedTestResults(wantedData, i);
-            buildGraph(firstTry, flavors, 14, margin, "ceva");
+            buildGraph(firstTry, flavors, 14, margin, i);
         }
 
     });
