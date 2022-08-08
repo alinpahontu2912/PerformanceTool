@@ -8,7 +8,6 @@ public class QuerySolver
     public QuerySolver()
     {
         client = new();
-        client.DefaultRequestHeaders.Add("User-Agent", "my-app");
     }
 
     public async Task<byte[]> solveQueryByte(string url)
