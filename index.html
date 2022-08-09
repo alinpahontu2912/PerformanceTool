@@ -2,18 +2,22 @@
 <!--  Licensed to the .NET Foundation under one or more agreements. -->
 <!-- The .NET Foundation licenses this file to you under the MIT license. -->
 <html>
-
 <head>
-  <title>PerformanceTool</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="modulepreload" href="./main.js" />
-  <link rel="modulepreload" href="./dotnet.js" />
+    <title>PerformanceTool</title>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v7.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="modulepreload" href="./main.js" />
+    <link rel="modulepreload" href="./dotnet.js" />
+    <style>
+        div {
+            display: inline;
+        }
+    </style>
 </head>
-
 <body>
-  <span id="out"></span>
-  <script type='module' src="./main.js"></script>
+    <!--<input type="number" id="buttonSize" value=14>-->
+    <script type='module' src="./main.js"></script>
+    <div id="graphs"></div>
 </body>
-
 </html>
