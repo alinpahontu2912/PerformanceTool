@@ -41,10 +41,10 @@ App.main = async function (applicationArguments) {
         return result;
     }
 
-    function circlePoints(dataGroup, data, color, x, y, flavor, escapedFlavor) {
+    function circlePoints(dataGroup, data, color, x, y, flavor, escapedFlavor, taskMeasurementNumber) {
         var radius = 3;
         var circleGroup = dataGroup.append("g")
-            .attr("class", escapedFlavor + "circleData");
+            .attr("class", escapedFlavor + "circleData" + taskMeasurementNumber);
         data.forEach(function (point) {
             circleGroup.append("circle")
                 .attr("fill", color)
@@ -108,7 +108,7 @@ App.main = async function (applicationArguments) {
 
     function addLegendContent(legend, xCoord, yCoord, color, flavor, escapedFlavor, taskMeasurementNumber) {
         var lineClass = "." + escapedFlavor + taskMeasurementNumber;
-        var circleClass = "." + escapedFlavor + "circleData";
+        var circleClass = "." + escapedFlavor + "circleData" + taskMeasurementNumber;
         legend.append("text")
             .text(flavor)
             .attr("font-size", "7pt")
@@ -119,6 +119,8 @@ App.main = async function (applicationArguments) {
             .on("click", function () {
                 var visibility = d3.select(lineClass).style("visibility");
                 d3.select(lineClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
+                console.log(circleClass);
+                console.log(d3.select(circleClass));
                 d3.select(circleClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
                 var textStyle = d3.select(this).style("text-decoration");
                 d3.select(this).transition().style("text-decoration", textStyle == "line-through" ? "none" : "line-through");
@@ -182,7 +184,7 @@ App.main = async function (applicationArguments) {
         for (var i = 0; i < flavors.length; i++) {
             var escapedFlavor = flavors[i].replaceAll(/[^a-zA-Z]/gi, '');
             plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
-            circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor);
+            circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor, taskMeasurementNumber);
             addLegendContent(legend, width + 40, startY, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
             startY += 15;
         }
@@ -206,7 +208,6 @@ App.main = async function (applicationArguments) {
         var data = JSON.parse(value);
         var wantedData = getLastDaysData(data, 14);
         var flavors = getFlavors(data);
-        console.log(wantedData);
         const margin = { top: 60, right: 120, bottom: 80, left: 80 };
         for (var i = 0; i < 24; i++) {
             var firstTry = getWantedTestResults(wantedData, i);
