@@ -2,15 +2,15 @@
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-public class QuerySolver
+public class DataDownloader
 {
     public HttpClient client;
-    public QuerySolver()
+    public DataDownloader()
     {
         client = new();
     }
 
-    public async Task<byte[]> solveQueryByte(string url)
+    public async Task<byte[]> downloadAsBytes(string url)
     {
         var response = await client.GetAsync(url);
         if (response.StatusCode != HttpStatusCode.OK)
@@ -18,7 +18,7 @@ public class QuerySolver
         var text = await response.Content.ReadAsByteArrayAsync();
         return text;
     }
-    public async Task<string> solveQueryText(string url)
+    public async Task<string> downloadAsText(string url)
     {
         var response = await client.GetAsync(url);
         if (response.StatusCode != HttpStatusCode.OK)
