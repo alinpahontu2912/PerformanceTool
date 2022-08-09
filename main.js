@@ -130,7 +130,7 @@ App.main = async function (applicationArguments) {
         const height = 400 - margin.top - margin.bottom;
 
         // create div and add styling to it
-        var dataGroup = d3.select("body")
+        var dataGroup = d3.select("#graphs")
             .append("div")
             .append("svg")
             .attr("width", width + margin.left + margin.right)
@@ -203,6 +203,5 @@ App.main = async function (applicationArguments) {
         buildGraph(firstTry, flavors, 14, margin, i);
     }
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
-
 }
 
