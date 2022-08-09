@@ -5,8 +5,11 @@ using System.Text.Json;
 using System.Text;
 using System.Threading.Tasks;
 using WasmBenchmarkResults;
+using System.Runtime.InteropServices.JavaScript;
+using System;
 
-public class TestLoader
+Console.WriteLine("Hello World!");
+public partial class TestLoader
 {
     readonly static string measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     readonly static string zipFileName = "index.json";
@@ -27,7 +30,7 @@ public class TestLoader
         var options = new JsonSerializerOptions { IncludeFields = true };
         QuerySolver querySolver = new();
         List<GraphPointData> list = new();
-        var bytes = await querySolver.solveQueryByte(measurementsUrl + "index.zip");
+        var bytes = await querySolver.bytesDownloader(measurementsUrl + "index.zip");
         var memoryStream = new MemoryStream(bytes);
         ZipArchive archive = new ZipArchive(memoryStream);
         var entry = archive.GetEntry(zipFileName);
@@ -47,5 +50,11 @@ public class TestLoader
         }
         var jsonData = JsonSerializer.Serialize(list, options);
         return jsonData;
+    }
+
+    [JSExport]
+    internal static Task<string> loadData()
+    {
+        return loadTests();
     }
 }

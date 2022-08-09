@@ -1,11 +1,8 @@
 ﻿import { App } from './app-support.js'
 
 App.main = async function (applicationArguments) {
-    App.IMPORTS.window = {
-        location: {
-            href: () => globalThis.window.location.href
-        }
-    };
+
+    const regex = /[^a-zA-Z]/gi;
 
     function mapByFlavor(data) {
         var obj = data.reduce((map, e) => ({
@@ -119,8 +116,6 @@ App.main = async function (applicationArguments) {
             .on("click", function () {
                 var visibility = d3.select(lineClass).style("visibility");
                 d3.select(lineClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
-                console.log(circleClass);
-                console.log(d3.select(circleClass));
                 d3.select(circleClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
                 var textStyle = d3.select(this).style("text-decoration");
                 d3.select(this).transition().style("text-decoration", textStyle == "line-through" ? "none" : "line-through");
@@ -141,13 +136,6 @@ App.main = async function (applicationArguments) {
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
-
-        function changeSize() {
-            numOfDays = this.value;
-            console.log(this.value);
-
-        }
-        d3.select("#buttonSize").on("input", changeSize);
 
         // get data by flavor
         var filteredData = mapByFlavor(data);
@@ -182,7 +170,7 @@ App.main = async function (applicationArguments) {
         var legend = addLegendBorder(dataGroup, width, startY, flavors);
         // add data to graph
         for (var i = 0; i < flavors.length; i++) {
-            var escapedFlavor = flavors[i].replaceAll(/[^a-zA-Z]/gi, '');
+            var escapedFlavor = flavors[i].replaceAll(regex, '');
             plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
             circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor, taskMeasurementNumber);
             addLegendContent(legend, width + 40, startY, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
@@ -203,7 +191,7 @@ App.main = async function (applicationArguments) {
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
-    const promise = exports.MyClass.loadData();
+    const promise = exports.TestLoader.loadData();
     promise.then(value => {
         var data = JSON.parse(value);
         var wantedData = getLastDaysData(data, 14);

@@ -10,7 +10,7 @@ public class QuerySolver
         client = new();
     }
 
-    public async Task<byte[]> solveQueryByte(string url)
+    public async Task<byte[]> bytesDownloader(string url)
     {
         var response = await client.GetAsync(url);
         if (response.StatusCode != HttpStatusCode.OK)
@@ -18,7 +18,7 @@ public class QuerySolver
         var text = await response.Content.ReadAsByteArrayAsync();
         return text;
     }
-    public async Task<string> solveQueryText(string url)
+    public async Task<string> textDownloader(string url)
     {
         var response = await client.GetAsync(url);
         if (response.StatusCode != HttpStatusCode.OK)
