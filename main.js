@@ -66,18 +66,19 @@ App.main = async function (applicationArguments) {
             .datum(data)
             .attr("fill", "none")
             .attr("stroke", color)
-            .attr("stroke-width", 1.5)
-            .attr("d", d3.line()
+            .attr("stroke-width", 1)
+            .attr("d", d3.line().curve(d3.curveMonotoneX)
                 .x(function (d) { return x(new Date(d.commitTime)); })
                 .y(function (d) { return y(+d.minTime); })
             );
 
     }
 
-    function addSimpleText(dataGroup, xCoord, yCoord, textSize, text, color) {
+    function addSimpleText(dataGroup, xCoord, yCoord, textSize, text, color, rotation = 0) {
         return dataGroup.append("g")
             .append("text")
             .text(text)
+            .attr("transform", `rotate(${rotation})`)
             .attr("font-size", textSize)
             .attr("fill", color)
             .attr("text-anchor", "middle")
@@ -107,6 +108,8 @@ App.main = async function (applicationArguments) {
     function addLegendContent(legend, xCoord, yCoord, color, flavor, escapedFlavor, taskMeasurementNumber) {
         var lineClass = "." + escapedFlavor + taskMeasurementNumber;
         var circleClass = "." + escapedFlavor + "circleData" + taskMeasurementNumber;
+        legend.append('input')
+            .attr('type', 'checkbox');
         legend.append("text")
             .text(flavor)
             .attr("font-size", "7pt")
@@ -116,10 +119,10 @@ App.main = async function (applicationArguments) {
             .attr("y", yCoord)
             .on("click", function () {
                 var visibility = d3.select(lineClass).style("visibility");
-                d3.select(lineClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
-                d3.select(circleClass).transition().style("visibility", visibility == "visible" ? "hidden" : "visible");
+                d3.select(lineClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
+                d3.select(circleClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
                 var textStyle = d3.select(this).style("text-decoration");
-                d3.select(this).transition().style("text-decoration", textStyle == "line-through" ? "none" : "line-through");
+                d3.select(this).transition().style("text-decoration", textStyle === "line-through" ? "none" : "line-through");
             });
 
     }
@@ -130,9 +133,12 @@ App.main = async function (applicationArguments) {
         const height = 400 - margin.top - margin.bottom;
 
         // create div and add styling to it
-        var dataGroup = d3.select("#graphs")
+        var collapsible = d3.select("#graphs")
             .append("div")
-            .append("svg")
+            .append("details");
+        collapsible.append("summary")
+            .html(data[0].taskMeasurementName);
+        var dataGroup = collapsible.append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -177,10 +183,10 @@ App.main = async function (applicationArguments) {
             addLegendContent(legend, width + 40, startY, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
             startY += 15;
         }
-        // title
-        addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "12pt", data[0].taskMeasurementNumber, "black");
+        // chart title
+        // addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "12pt", data[0].taskMeasurementName, "black");
         // y axis legend
-        addSimpleText(dataGroup, 0 - margin.top / 2, 0 - (margin.top / 2) + 10, "12pt", "Results (ms)", "black");
+        addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", "Results (ms)", "black", -90);
 
         // draw axis 
         yAxis(yAxisGroup);
@@ -197,7 +203,7 @@ App.main = async function (applicationArguments) {
     var data = JSON.parse(value);
     var wantedData = getLastDaysData(data, 14);
     var flavors = getFlavors(data);
-    const margin = { top: 60, right: 120, bottom: 80, left: 80 };
+    const margin = { top: 60, right: 120, bottom: 80, left: 120 };
     for (var i = 0; i < 24; i++) {
         var firstTry = getWantedTestResults(wantedData, i);
         buildGraph(firstTry, flavors, 14, margin, i);
