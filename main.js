@@ -4,6 +4,7 @@ App.main = async function (applicationArguments) {
 
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
+    const margin = { top: 60, right: 120, bottom: 80, left: 120 };
 
     function mapByFlavor(data) {
         var obj = data.reduce((map, e) => ({
@@ -86,59 +87,54 @@ App.main = async function (applicationArguments) {
             .attr("y", yCoord);
     }
 
-    function addLegendBorder(dataGroup, xCoord, startY, flavors) {
-        var textSpacing = 15;
-        var rectWidth = 100;
-        var rectHeight = (flavors.length + 1) * textSpacing;
-        var legend = dataGroup.append("g")
+    function addLegendBorder(dataGroup) {
+        var legend = dataGroup
+            .append("div")
+            .attr("width", 400)
+            .attr("height", 400)
+            .append("form")
             .attr("class", "chart-legend");
-        legend.append("rect")
-            .attr("class", "legend")
-            .attr("x", xCoord - 10)
-            .attr("y", startY - 20)
-            .attr("rx", "5px")
-            .attr("width", rectWidth)
-            .attr("height", rectHeight)
-            .attr("stroke", "black")
-            .attr("fill", "white");
-        addSimpleText(legend, xCoord + 40, startY - 10, "10pt", "Chart Legend", "black");
+
+        legend
+            .append("p")
+            .html("Chart Legend");
         return legend;
     }
 
-    function addLegendContent(legend, xCoord, yCoord, color, flavor, escapedFlavor, taskMeasurementNumber) {
+    function addLegendContent(legend, color, flavor, escapedFlavor, taskMeasurementNumber) {
         var lineClass = "." + escapedFlavor + taskMeasurementNumber;
         var circleClass = "." + escapedFlavor + "circleData" + taskMeasurementNumber;
-        legend.append('input')
-            .attr('type', 'checkbox');
-        legend.append("text")
-            .text(flavor)
-            .attr("font-size", "7pt")
-            .attr("fill", color)
-            .attr("text-anchor", "middle")
-            .attr("x", xCoord)
-            .attr("y", yCoord)
+        legend.append("br");
+        legend.append("input")
+            .attr("type", "checkbox")
+            .attr("checked", "true")
             .on("click", function () {
                 var visibility = d3.select(lineClass).style("visibility");
                 d3.select(lineClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
                 d3.select(circleClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
-                var textStyle = d3.select(this).style("text-decoration");
-                d3.select(this).transition().style("text-decoration", textStyle === "line-through" ? "none" : "line-through");
-            });
+            })
+            .attr("id", lineClass)
+        legend.append("label")
+            .attr("for", lineClass)
+            .style("color", color)
+            .html(flavor);
+
 
     }
 
-    function buildGraph(data, flavors, numOfDays, margin, taskMeasurementNumber) {
+    function buildGraph(data, flavors, numOfDays, taskMeasurementNumber) {
 
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
 
         // create div and add styling to it
         var collapsible = d3.select("#graphs")
-            .append("div")
             .append("details");
         collapsible.append("summary")
             .html(data[0].taskMeasurementName);
-        var dataGroup = collapsible.append("svg")
+        var dataGroup1 = collapsible.append("div");
+        var dataGroup = dataGroup1
+            .append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -174,17 +170,15 @@ App.main = async function (applicationArguments) {
         var yAxis = d3.axisLeft(y);
 
         var startY = (height - flavors.length * 20) / 2 + 20;
-        var legend = addLegendBorder(dataGroup, width, startY, flavors);
+        var legend = addLegendBorder(collapsible);
         // add data to graph
         for (var i = 0; i < flavors.length; i++) {
             var escapedFlavor = flavors[i].replaceAll(regex, '');
             plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
             circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor, taskMeasurementNumber);
-            addLegendContent(legend, width + 40, startY, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
+            addLegendContent(legend, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
             startY += 15;
         }
-        // chart title
-        // addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "12pt", data[0].taskMeasurementName, "black");
         // y axis legend
         addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", "Results (ms)", "black", -90);
 
@@ -203,10 +197,9 @@ App.main = async function (applicationArguments) {
     var data = JSON.parse(value);
     var wantedData = getLastDaysData(data, 14);
     var flavors = getFlavors(data);
-    const margin = { top: 60, right: 120, bottom: 80, left: 120 };
     for (var i = 0; i < 24; i++) {
         var firstTry = getWantedTestResults(wantedData, i);
-        buildGraph(firstTry, flavors, 14, margin, i);
+        buildGraph(firstTry, flavors, 14, i);
     }
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
