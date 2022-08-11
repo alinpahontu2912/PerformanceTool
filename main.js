@@ -189,6 +189,17 @@ App.main = async function (applicationArguments) {
         d3.selectAll(".xAxisGroup .tick text")
             .attr("transform", "rotate(-15)");
 
+        d3.select("startDate").on("onChange", function () {
+            console.log(this.value);
+        });
+/*        d3.select("endDate").on("change", function () {
+            console.log(this.value);
+        });
+
+        d3.select("body").select("submit").on("click", function () {
+            console.log(this.value);
+        });*/
+
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
