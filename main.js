@@ -56,9 +56,8 @@ App.main = async function (applicationArguments) {
             .data(data)
             .enter()
             .append("circle")
-            .on("click", function (d) {
-                console.log(d.data)
-                window.open(d.gitLogUrl, '_blank');
+            .on("click", function (d, i) {
+                window.open(i.gitLogUrl, '_blank');
             })
             .attr("fill", color)
             .attr("r", radius)
