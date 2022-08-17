@@ -11,9 +11,7 @@ App.main = async function (applicationArguments) {
             ...map,
             [e.flavor]: [...(map[e.flavor] ?? []), e]
         }), {});
-
         return new Map(Object.entries(obj));
-
     }
 
     function getWantedTestResults(data, testNumber, numTests = 24) {
@@ -40,49 +38,61 @@ App.main = async function (applicationArguments) {
         return result;
     }
 
-    function getResultsBetweenDates(data, startDate, endDate) {
-        var result = data.filter(function (d) {
+    function getResultsBetweenDates(allData, startDate, endDate) {
+        var result = allData.filter(function (d) {
             var date = new Date(d.commitTime);
-            return date >= startDate && date <= endDate;
+            return date.getTime() >= startDate.getTime()
+                && date.getTime() <= endDate.getTime();
         });
         return result;
     }
 
     function circlePoints(dataGroup, data, color, x, y, flavor, escapedFlavor, taskMeasurementNumber) {
         var radius = 3;
-        var circleGroup = dataGroup.append("g")
-            .attr("class", escapedFlavor + "circleData" + taskMeasurementNumber);
-        circleGroup.selectAll("circle")
-            .data(data)
-            .enter()
-            .append("circle")
-            .on("click", function (d, i) {
-                window.open(i.gitLogUrl, '_blank');
-            })
-            .attr("fill", color)
-            .attr("r", radius)
-            .attr("cx", function (d) { return x(new Date(d.commitTime)); })
-            .attr("cy", function (d) { return y(+d.minTime) })
-            .append("title")
-            .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + " ms"; });
+        var circleGroupName = escapedFlavor + "circleData" + taskMeasurementNumber;
+        d3.select("." + circleGroupName).remove();
+        if (data.length !== 0) {
+            var circleGroup = dataGroup.append("g")
+                .attr("class", circleGroupName)
+                .selectAll("circle")
+                .data(data);
+            circleGroup
+                .enter()
+                .append("circle")
+                .merge(circleGroup)
+                .on("click", function (_, i) {
+                    window.open(i.gitLogUrl, '_blank');
+                })
+                .attr("fill", color)
+                .attr("r", radius)
+                .attr("cx", function (d) { return x(new Date(d.commitTime)); })
+                .attr("cy", function (d) { return y(+d.minTime) })
+                .append("title")
+                .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + " ms"; });
+        }
     }
 
     function plotVariable(dataGroup, color, data, x, y, flavor, taskMeasurementNumber) {
         var className = flavor + taskMeasurementNumber;
-        var lineGroup = dataGroup.append("g");
-        lineGroup
-            .selectAll("path")
-            .data([data])
-            .enter()
-            .append("path")
-            .attr("class", className)
-            .attr("fill", "none")
-            .attr("stroke", color)
-            .attr("stroke-width", 1)
-            .attr("d", d3.line().curve(d3.curveMonotoneX)
-                .x(function (d) { return x(new Date(d.commitTime)); })
-                .y(function (d) { return y(+d.minTime); })
-            );
+        d3.select("." + className).remove();
+        if (data.length !== 0) {
+            var lineGroup = dataGroup.append("g")
+                .selectAll("path")
+                .data([data]);
+
+            lineGroup
+                .enter()
+                .append("path")
+                .attr("class", className)
+                .merge(lineGroup)
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 1)
+                .attr("d", d3.line().curve(d3.curveMonotoneX)
+                    .x(function (d) { return x(new Date(d.commitTime)); })
+                    .y(function (d) { return y(+d.minTime); })
+                );
+        }
     }
 
     function addSimpleText(dataGroup, xCoord, yCoord, textSize, text, color, rotation = 0) {
@@ -111,38 +121,58 @@ App.main = async function (applicationArguments) {
         return legend;
     }
 
-    function addLegendContent(legend, color, flavor, escapedFlavor, taskMeasurementNumber) {
-        var lineClass = "." + escapedFlavor + taskMeasurementNumber;
-        var circleClass = "." + escapedFlavor + "circleData" + taskMeasurementNumber;
-        legend.append("br");
-        legend.append("input")
-            .attr("type", "checkbox")
-            .attr("checked", "true")
-            .on("click", function () {
-                var visibility = d3.select(lineClass).style("visibility");
-                d3.select(lineClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
-                d3.select(circleClass).transition().style("visibility", visibility === "visible" ? "hidden" : "visible");
-            })
-            .attr("id", lineClass)
-        legend.append("label")
-            .attr("for", lineClass)
-            .style("color", color)
-            .html(flavor);
-
+    function addLegendContent(legend, colors, flavors, taskMeasurementNumber, x, xAxis, y, yAxis, data, dataGroup) {
+        for (var i = 0; i < flavors.length; i++) {
+            var escapedFlavor = flavors[i].replaceAll(regex, '');
+            var lineClass = ".path " + escapedFlavor + taskMeasurementNumber;
+            // var circleClass = ".path " + escapedFlavor + "circleData" + taskMeasurementNumber;
+            legend.append("br");
+            legend.append("input")
+                .attr("type", "checkbox")
+                .attr("checked", "true")
+                .attr("id", lineClass)
+                .on("click", function () {
+                    // should update on click
+                    // update(dataGroup, updatedData, x, xAxis, y, yAxis, flavors, colors, taskMeasurementNumber);
+                });
+            legend.append("label")
+                .attr("for", lineClass)
+                .style("color", colors[i])
+                .html(flavors[i]);
+        }
 
     }
 
-    function buildGraph(allData, flavors, numOfDays, taskMeasurementNumber) {
+    function update(selection, data, x, xAxis, y, yAxis, flavors, colors, taskMeasurementNumber) {
+        x.domain(d3.extent(data, function (d) { return new Date(d.commitTime); }));
+        xAxis.transition().duration(1500).call(d3.axisBottom(x)
+            .tickFormat(d3.timeFormat("%m/%d/%Y")));
+
+        y.domain(d3.extent(data, function (d) { return +d.minTime; }));
+        yAxis.transition().duration(1500).call(d3.axisLeft(y));
+
+        var filteredData = mapByFlavor(data);
+        console.log(filteredData);
+        d3.selectAll(".xAxis .tick text")
+            .attr("transform", "rotate(-15)");
+
+        for (var i = 0; i < flavors.length; i++) {
+            var escapedFlavor = flavors[i].replaceAll(regex, '');
+            plotVariable(selection, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
+            circlePoints(selection, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor, taskMeasurementNumber);
+
+        }
+    }
+
+    function buildGraph(allData, flavors, taskMeasurementNumber) {
 
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
 
-        var startDate;// = new Date(d3.select("#startDate").value);
-        var endDate; //= new Date(d3.select("#endDate").value);
+        var startDate;
+        var endDate = new Date();
 
         var data = getLastDaysData(allData, 14);
-        data = getWantedTestResults(data, taskMeasurementNumber);
-        // create div and add styling to it
         var collapsible = d3.select("#graphs")
             .append("details");
         collapsible.append("summary")
@@ -155,77 +185,43 @@ App.main = async function (applicationArguments) {
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        // get data by flavor
-        var filteredData = mapByFlavor(data);
         var colors = d3.schemeCategory10;
 
-        const x = d3.scaleTime()
-            .domain(d3.extent(data, function (d) { return new Date(d.commitTime); }))
+        var x = d3.scaleTime()
             .range([0, width])
             .nice();
 
-        const y = d3.scaleLinear()
-            .domain(d3.extent(data, function (d) { return +d.minTime; }))
+        var xAxis = dataGroup
+            .append("g")
+            .attr("class", "xAxis")
+            .attr("transform", "translate(0, " + height + ")");
+
+        var y = d3.scaleLinear()
             .range([height, 0])
             .nice();
 
-        var xAxisGroup = dataGroup
+        var yAxis = dataGroup
             .append("g")
-            .attr("class", "xAxisGroup")
-            .attr("transform", "translate(0, " + height + ")");
+            .attr("class", "yAxis");
 
-        var xAxis = d3.axisBottom(x)
-            .tickFormat(d3.timeFormat("%m/%d/%Y"))
-            .ticks(numOfDays);
-
-        var yAxisGroup = dataGroup
-            .append("g")
-            .attr("class", "yAxisGroup");
-
-        var yAxis = d3.axisLeft(y);
-
+        var yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", "Results (ms)", "black", -90);
         var legend = addLegendBorder(collapsible);
-        // add data to graph
-        for (var i = 0; i < flavors.length; i++) {
-            var escapedFlavor = flavors[i].replaceAll(regex, '');
-            plotVariable(dataGroup, colors[i], filteredData.get(flavors[i]), x, y, escapedFlavor, taskMeasurementNumber);
-            circlePoints(dataGroup, filteredData.get(flavors[i]), colors[i], x, y, flavors[i], escapedFlavor, taskMeasurementNumber);
-            addLegendContent(legend, colors[i], flavors[i], escapedFlavor, taskMeasurementNumber);
-        }
-        // y axis legend
-        addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", "Results (ms)", "black", -90);
+        addLegendContent(legend, colors, flavors, taskMeasurementNumber, x, xAxis, y, yAxis, data, dataGroup);
 
-        // draw axis 
-        yAxis(yAxisGroup);
-        xAxis(xAxisGroup);
-        // rotate x axis tick text
-        d3.selectAll(".xAxisGroup .tick text")
-            .attr("transform", "rotate(-15)");
+        update(dataGroup, data, x, xAxis, y, yAxis, flavors, colors, taskMeasurementNumber);
 
-        d3.select("#startDate").on("change", function () {
+        d3.selectAll("#startDate").on("change", function () {
             startDate = new Date(this.value);
         });
 
-        d3.select("#endDate").on("change", function () {
+        d3.selectAll("#endDate").on("change", function () {
             endDate = new Date(this.value);
         });
 
-        d3.select("#submit").on("click", function () {
-            console.log("clicked");
-            update();
+        d3.selectAll("#submit").on("click", function () {
+            data = getResultsBetweenDates(allData, startDate, endDate);
+            update(dataGroup, data, x, xAxis, y, yAxis, flavors, colors, taskMeasurementNumber);
         });
-
-        function update() {
-            if (typeof startDate === "undefined" || typeof endDate === "undefined") {
-                alert("Choose valid dates!");
-            }
-            else {
-                data = getResultsBetweenDates(allData, startDate, endDate);
-                console.log(data);
-            }
-
-        }
-
 
     }
 
@@ -235,7 +231,8 @@ App.main = async function (applicationArguments) {
     var data = JSON.parse(value);
     var flavors = getFlavors(data);
     for (var i = 0; i < 24; i++) {
-        buildGraph(data, flavors, 14, i);
+        var testData = getWantedTestResults(data, i);
+        buildGraph(testData, flavors, i);
     }
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
