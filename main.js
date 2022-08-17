@@ -14,7 +14,7 @@ App.main = async function (applicationArguments) {
         return new Map(Object.entries(obj));
     }
 
-    function getWantedTestResults(data, testNumber, numTests = 24) {
+    function getWantedTestResults(data, testNumber, numTests = 28) {
         var array = [];
         for (let i = testNumber; i < data.length; i += numTests) {
             array.push(data[i]);
@@ -68,7 +68,7 @@ App.main = async function (applicationArguments) {
                 .attr("cx", function (d) { return x(new Date(d.commitTime)); })
                 .attr("cy", function (d) { return y(+d.minTime) })
                 .append("title")
-                .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + " ms"; });
+                .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}`; });
         }
     }
 
@@ -204,7 +204,7 @@ App.main = async function (applicationArguments) {
             .append("g")
             .attr("class", "yAxis");
 
-        var yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", "Results (ms)", "black", -90);
+        var yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
         var legend = addLegendBorder(collapsible);
         addLegendContent(legend, colors, flavors, taskMeasurementNumber, x, xAxis, y, yAxis, data, dataGroup);
 
@@ -230,7 +230,7 @@ App.main = async function (applicationArguments) {
     var value = await promise;
     var data = JSON.parse(value);
     var flavors = getFlavors(data);
-    for (var i = 0; i < 24; i++) {
+    for (var i = 0; i < 28; i++) {
         var testData = getWantedTestResults(data, i);
         buildGraph(testData, flavors, i);
     }

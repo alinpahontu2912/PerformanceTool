@@ -48,6 +48,13 @@ public partial class Program
             {
                 list.Add(new GraphPointData(data[i].commitTime.ToString(), data[i].flavor, pair, logUrl));
             }
+            if (data[i].sizes != null)
+            {
+                foreach (var pair in data[i].sizes)
+                {
+                    list.Add(new GraphPointData(data[i].commitTime.ToString(), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, "bytes"));
+                }
+            }
         }
         var jsonData = JsonSerializer.Serialize(list, options);
         return jsonData;

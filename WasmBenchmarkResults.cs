@@ -10,6 +10,7 @@ namespace WasmBenchmarkResults
         public string flavor;
         public DateTimeOffset commitTime;
         public Dictionary<string, double> minTimes;
+        public Dictionary<string, long> sizes;
 
         public override string ToString()
         {
@@ -32,14 +33,16 @@ namespace WasmBenchmarkResults
         public double minTime;
         public string flavor;
         public string gitLogUrl;
+        public string unit;
 
-        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair, string gitLogUrl)
+        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair, string gitLogUrl, string unit = "ms")
         {
             this.commitTime = commitTime;
             taskMeasurementName = pair.Key;
             minTime = pair.Value;
             this.flavor = flavor;
             this.gitLogUrl = gitLogUrl;
+            this.unit = unit;
         }
     }
 }
