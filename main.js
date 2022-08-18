@@ -205,56 +205,51 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function buildGraphs(allData, flavors) {
+    function buildGraph(allData, flavors, colors, taskId) {
 
         const width = 1000 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
+        let taskName = tasksIds[taskId];
+        let data = allData.filter(d => d.taskMeasurementName === taskName);
+        let collapsible = d3.select("#graphs")
+            .append("details")
+        collapsible.append("summary")
+            .html(taskName);
+        let dataGroup = collapsible
+            .append("div")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        let testsData = [];
-        let colors = d3.schemeCategory10;
+        let x = d3.scaleTime()
+            .range([0, width])
+            .nice();
+
+        let xAxis = dataGroup
+            .append("g")
+            .attr("class", "xAxis")
+            .attr("transform", "translate(0, " + height + ")");
+
+        let y = d3.scaleLinear()
+            .range([height, 0])
+            .nice();
+
+        let yAxis = dataGroup
+            .append("g")
+            .attr("class", "yAxis");
+
+        let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
+        let testData = new TaskData(taskId, yLegendName, dataGroup, data, x, y, xAxis, yAxis);
+        testData.data = getLastDaysData(testData.allData, 14);
+        update(testData, colors, flavors);
+        return testData;
+    }
+
+    function updateGraphs(testsData, flavors, colors, numTests = 28) {
         let startDate = null;
         let endDate = new Date();
-
-        for (let i = 0; i < 28; i++) {
-            let taskName = tasksIds[i];
-            let data = allData.filter(d => d.taskMeasurementName === taskName);
-            let collapsible = d3.select("#graphs")
-                .append("details")
-            collapsible.append("summary")
-                .html(taskName);
-            let dataGroup = collapsible
-                .append("div")
-                .append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            let x = d3.scaleTime()
-                .range([0, width])
-                .nice();
-
-            let xAxis = dataGroup
-                .append("g")
-                .attr("class", "xAxis")
-                .attr("transform", "translate(0, " + height + ")");
-
-            let y = d3.scaleLinear()
-                .range([height, 0])
-                .nice();
-
-            let yAxis = dataGroup
-                .append("g")
-                .attr("class", "yAxis");
-
-            let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
-            let testData = new TaskData(i, yLegendName, dataGroup, data, x, y, xAxis, yAxis);
-            testData.data = getLastDaysData(testData.allData, 14);
-            update(testData, colors, flavors);
-            testsData.push(testData);
-        }
-
-
         d3.selectAll("#startDate").on("change", function () {
             startDate = new Date(this.value);
         });
@@ -264,15 +259,21 @@ App.main = async function (applicationArguments) {
         });
 
         d3.selectAll("#submit").on("click", function () {
-            if (startDate !== null && endDate !== null) {
-                for (let i = 0; i < 28; i++) {
-                    let curTest = testsData[i];
-                    curTest.data = getResultsBetweenDates(curTest.allData, startDate, endDate);
-                    update(curTest, colors, flavors);
+            if (startDate === null) {
+                alert("Select start date!");
+            }
+            else if (startDate !== null) {
+                if (startDate.getTime() >= endDate.getTime()) {
+                    alert("Choose valid dates!");
+                } else {
+                    for (let i = 0; i < numTests; i++) {
+                        let curTest = testsData[i];
+                        curTest.data = getResultsBetweenDates(curTest.allData, startDate, endDate);
+                        update(curTest, colors, flavors);
+                    }
                 }
             }
         });
-
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
@@ -280,7 +281,12 @@ App.main = async function (applicationArguments) {
     var value = await promise;
     let data = JSON.parse(value);
     let flavors = getFlavors(data);
-    buildGraphs(data, flavors);
+    let colors = d3.schemeCategory10;
+    let testsData = [];
+    for (let i = 0; i < 28; i++) {
+        testsData.push(buildGraph(data, flavors, colors, i));
+    }
+    updateGraphs(testsData, flavors, colors);
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
 
