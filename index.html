@@ -21,26 +21,35 @@
     </style>
 </head>
 <body>
-
-    <h1>List of charts</h1>
-    <h2>
-        <label for="startDate">Start Date:</label>
-        <input type="date" id="startDate">
-        <br />
-        <label for="endDate">End Date:</label>
-        <input type="date" id="endDate">
-        <br />
-        <input type="submit" id="submit">
-    </h2>
+    <div id="mySidebar">
+        <button onclick="w3_close()" class="sidebarButton">Close;</button>
+        <p>
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate">
+            <br />
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate">
+            <br />
+            <input type="submit" id="submit">
+        </p>
+        <div id="chartLegend"></div>
+    </div>
+    <div id="charts">
+        <button onclick="w3_open()">☰</button>
+        <h1>List of charts</h1>
+        <div id="graphs"></div>
+    </div>
     <script>
-        var today = new Date();
-        var weeksAgo = new Date();
-        weeksAgo.setDate(today.getDate() - 14);
-        document.getElementById("startDate").valueAsDate = weeksAgo;
-        document.getElementById("endDate").valueAsDate = today;
+        document.getElementById("endDate").valueAsDate = new Date();
+        function w3_open() {
+            document.getElementById("mySidebar").style.display = "block";
+        }
+
+        function w3_close() {
+            document.getElementById("mySidebar").style.display = "none";
+        }
     </script>
 
     <script type='module' src="./main.js"></script>
-    <div id="graphs"></div>
 </body>
 </html>
