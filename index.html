@@ -11,19 +11,56 @@
     <link rel="modulepreload" href="./dotnet.js" />
     <style>
         div {
-            display: inline-block;
             vertical-align: middle;
         }
 
         text {
             cursor: default;
         }
+
+        h1 {
+            display: inline-block;
+            padding: 15px 15px 15px 15px;
+        }
+
+        #charts {
+            transition: margin-left .5s;
+            padding: 16px;
+        }
+
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+        }
+
+        .openbtn {
+            cursor: pointer;
+            background-color: #111;
+            color: white;
+            padding: 10px 10px 10px 10px;
+            border: none;
+            height: 30px;
+            width: 30px;
+        }
+
+            .openbtn:hover {
+                background-color: #444;
+            }
     </style>
 </head>
 <body>
-    <div id="mySidebar">
-        <button onclick="w3_close()" class="sidebarButton">Close;</button>
+    <div id="mySidebar" class="sidebar">
         <p>
+            <button onclick="w3_close()" class="closebtn">Close;</button>
+            <br />
             <label for="startDate">Start Date:</label>
             <input type="date" id="startDate">
             <br />
@@ -35,17 +72,19 @@
         <div id="chartLegend"></div>
     </div>
     <div id="charts">
-        <button onclick="w3_open()">☰</button>
+        <button class="openbtn" onclick="w3_open()">☰</button>
         <h1>List of charts</h1>
         <div id="graphs"></div>
     </div>
     <script>
         function w3_open() {
-            document.getElementById("mySidebar").style.display = "block";
+            document.getElementById("mySidebar").style.width = "250px";
+            document.getElementById("charts").style.marginLeft = "250px";
         }
 
         function w3_close() {
-            document.getElementById("mySidebar").style.display = "none";
+            document.getElementById("mySidebar").style.width = "0";
+            document.getElementById("charts").style.marginLeft = "0";
         }
     </script>
 

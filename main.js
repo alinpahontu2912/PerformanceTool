@@ -274,6 +274,7 @@ App.main = async function (applicationArguments) {
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
     let data = JSON.parse(value);
+    console.log(window.screen.availWidth);
     data.forEach(
         function (d) {
             d.time = new Date(d.commitTime);
