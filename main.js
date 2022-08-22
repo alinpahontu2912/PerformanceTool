@@ -5,7 +5,7 @@ App.main = async function (applicationArguments) {
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
     class TaskData {
-        constructor(taskId, legendName, dataGroup, allData, x, y, xAxis, yAxis) {
+        constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxis) {
             this.taskId = taskId;
             this.legendName = legendName;
             this.allData = allData;
@@ -14,9 +14,9 @@ App.main = async function (applicationArguments) {
             this.xAxis = xAxis;
             this.yAxis = yAxis;
             this.dataGroup = dataGroup;
-            this.startDate = null;
-            this.endDate = null;
             this.data = [];
+            this.hiddenData = [];
+            this.availableFlavors = flavors;
         }
     }
 
@@ -39,14 +39,14 @@ App.main = async function (applicationArguments) {
 
     function getLastDaysData(data, numOfDays) {
         let timeDif = 1000 * 60 * 60 * 24 * numOfDays;
-        let lastTest = new Date(data[data.length - 1].commitTime);
-        let result = data.filter(x => new Date(x.commitTime) >= lastTest - timeDif);
+        let lastTest = data[data.length - 1].time;
+        let result = data.filter(x => x.time >= lastTest - timeDif);
         return result;
     }
 
     function getResultsBetweenDates(allData, startDate, endDate) {
         let result = allData.filter(function (d) {
-            let date = new Date(d.commitTime);
+            let date = d.time;
             return date.getTime() >= startDate.getTime()
                 && date.getTime() <= endDate.getTime();
         });
@@ -70,7 +70,7 @@ App.main = async function (applicationArguments) {
             .attr("fill", color)
             .attr("r", radius)
             .attr("r", radius)
-            .attr("cx", function (d) { return testData.x(new Date(d.commitTime)); })
+            .attr("cx", function (d) { return testData.x(d.time); })
             .attr("cy", function (d) { return testData.y(+d.minTime) })
             .append("title")
             .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}`; });
@@ -94,7 +94,7 @@ App.main = async function (applicationArguments) {
             .attr("stroke", color)
             .attr("stroke-width", 1)
             .attr("d", d3.line().curve(d3.curveMonotoneX)
-                .x(function (d) { return testData.x(new Date(d.commitTime)); })
+                .x(function (d) { return testData.x(d.time); })
                 .y(function (d) { return testData.y(+d.minTime); })
             );
 
@@ -116,7 +116,7 @@ App.main = async function (applicationArguments) {
         let chartParagraph = d3.select(domName);
         chartParagraph.append("h1").html("Chart Legend");
         let selection = chartParagraph.append("div");
-        for (var i = 0; i < flavors.length; i++) {
+        for (let i = 0; i < flavors.length; i++) {
             let lineClass = flavors[i];
             selection.append("br");
             selection.append("input")
@@ -127,14 +127,29 @@ App.main = async function (applicationArguments) {
                     if (this.checked === false) {
                         for (let i = 0; i < numTests; i++) {
                             let curTest = testsData[i];
-                            console.log(curTest.data);
-                            curTest.data = curTest.data.filter(function (d) {
-                                return d.flavor !== lineClass;
+                            let flavorResults = curTest.data.filter(function (d) {
+                                return d.flavor === lineClass;
                             });
-                            console.log(curTest.data);
-                            let auxFlavors = Array.from(flavors);
-                            auxFlavors.splice(auxFlavors.indexOf(lineClass), 1);
-                            update(curTest, auxFlavors, allFlavors, ordinal);
+                            curTest.hiddenData = curTest.hiddenData.concat(flavorResults);
+                            curTest.data = curTest.data.filter(function (d) {
+                                return !flavorResults.includes(d);
+                            });
+                            curTest.availableFlavors.splice(curTest.availableFlavors.indexOf(lineClass), 1);
+                            update(curTest, flavors, ordinal);
+                        }
+                    } else {
+                        for (let i = 0; i < numTests; i++) {
+                            let curTest = testsData[i];
+                            let flavorResults = curTest.hiddenData.filter(function (d) {
+                                return d.flavor === lineClass;
+                            });
+                            curTest.data = curTest.data.concat(flavorResults);
+                            curTest.availableFlavors.push(lineClass);
+
+                            curTest.hiddenData = curTest.hiddenData.filter(function (d) {
+                                return !flavorResults.includes(d);
+                            });
+                            update(curTest, flavors, ordinal);
                         }
                     }
                 });
@@ -146,24 +161,22 @@ App.main = async function (applicationArguments) {
 
     }
 
-    function update(testData, flavors, allFlavors, ordinal) {
+    function update(testData, flavors, ordinal) {
 
-        testData.x.domain(d3.extent(testData.data, function (d) { return new Date(d.commitTime); }));
+        testData.x.domain(d3.extent(testData.data, function (d) { return d.time }));
         testData.xAxis.transition().duration(1500).call(d3.axisBottom(testData.x)
             .tickFormat(d3.timeFormat("%m/%d/%Y")));
 
         testData.y.domain(d3.extent(testData.data, function (d) { return +d.minTime; }));
         testData.yAxis.transition().duration(1500).call(d3.axisLeft(testData.y));
 
-
-
         d3.selectAll(".xAxis .tick text")
             .attr("transform", "rotate(-15)");
 
         var escapedFlavor = "";
 
-        for (let i = 0; i < allFlavors.length; i++) {
-            escapedFlavor = allFlavors[i].replaceAll(regex, '');
+        for (let i = 0; i < flavors.length; i++) {
+            escapedFlavor = flavors[i].replaceAll(regex, '');
             let className = escapedFlavor + testData.taskId;
             d3.select("." + className).remove();
             let circleGroupName = escapedFlavor + "circleData" + testData.taskId;
@@ -171,10 +184,11 @@ App.main = async function (applicationArguments) {
         }
 
         let filteredData = mapByFlavor(testData.data);
-        for (let i = 0; i < flavors.length; i++) {
-            escapedFlavor = flavors[i].replaceAll(regex, '');
-            plotVariable(testData, filteredData.get(flavors[i]), ordinal(flavors[i]), escapedFlavor);
-            circlePoints(testData, filteredData.get(flavors[i]), ordinal(flavors[i]), flavors[i], escapedFlavor);
+        let flvs = testData.availableFlavors;
+        for (let i = 0; i < flvs.length; i++) {
+            escapedFlavor = flvs[i].replaceAll(regex, '');
+            plotVariable(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), escapedFlavor);
+            circlePoints(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), flvs[i], escapedFlavor);
         }
     }
 
@@ -214,35 +228,42 @@ App.main = async function (applicationArguments) {
             .attr("class", "yAxis");
 
         let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
-        let testData = new TaskData(taskId, yLegendName, dataGroup, data, x, y, xAxis, yAxis);
+        let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxis);
         testData.data = getLastDaysData(testData.allData, 14);
-        update(testData, flavors, flavors, ordinal);
+        update(testData, flavors, ordinal);
         return testData;
     }
 
-    function updateGraphs(testsData, flavors, allFlavors, ordinal, numTests) {
+    function updateGraphs(testsData, flavors, ordinal, numTests) {
         let startDate = null;
-        let endDate = new Date();
-        d3.selectAll("#startDate").on("change", function () {
+        let endDate = null;
+
+        d3.select("#startDate").on("change", function () {
             startDate = new Date(this.value);
         });
 
-        d3.selectAll("#endDate").on("change", function () {
+        d3.select("#endDate").on("change", function () {
             endDate = new Date(this.value);
         });
 
-        d3.selectAll("#submit").on("click", function () {
+        d3.select("#submit").on("click", function () {
             if (startDate === null) {
                 alert("Select start date!");
             }
-            else if (startDate !== null) {
+            else if (startDate !== null && endDate !== null) {
                 if (startDate.getTime() >= endDate.getTime()) {
                     alert("Choose valid dates!");
                 } else {
                     for (let i = 0; i < numTests; i++) {
                         let curTest = testsData[i];
                         curTest.data = getResultsBetweenDates(curTest.allData, startDate, endDate);
-                        update(curTest, flavors, allFlavors, ordinal);
+                        curTest.hiddenData = curTest.data.filter(function (d) {
+                            return !curTest.availableFlavors.includes(d.flavor);
+                        });
+                        curTest.data = curTest.data.filter(function (d) {
+                            return curTest.availableFlavors.includes(d.flavor);
+                        });
+                        update(curTest, flavors, ordinal);
                     }
                 }
             }
@@ -253,6 +274,11 @@ App.main = async function (applicationArguments) {
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
     let data = JSON.parse(value);
+    data.forEach(
+        function (d) {
+            d.time = new Date(d.commitTime);
+        }
+    );
     let allFlavors = getDataProperties(data, 'flavor');
     let tasksNames = getDataProperties(data, 'taskMeasurementName');
     let numTests = tasksNames.length;
@@ -265,10 +291,10 @@ App.main = async function (applicationArguments) {
         .domain(allFlavors)
         .range(colors);
     let testsData = [];
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, allFlavors, ordinal, i));
     }
-    updateGraphs(testsData, allFlavors, allFlavors, ordinal, numTests);
+    updateGraphs(testsData, allFlavors, ordinal, numTests);
     addLegendContent(testsData, allFlavors, ordinal, "#chartLegend", numTests);
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
