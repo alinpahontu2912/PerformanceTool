@@ -10,10 +10,6 @@
     <link rel="modulepreload" href="./main.js" />
     <link rel="modulepreload" href="./dotnet.js" />
     <style>
-        div {
-            vertical-align: middle;
-        }
-
         text {
             cursor: default;
         }
@@ -54,12 +50,40 @@
             .openbtn:hover {
                 background-color: #444;
             }
+
+        .dropbtn {
+            padding: 16px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            z-index: 1;
+        }
+
+            .dropdown-content p {
+                color: black;
+                padding: 12px 16px;
+                text-decoration: none;
+                display: block;
+            }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown:hover .dropbtn {
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 <body>
     <div id="mySidebar" class="sidebar">
         <p>
-            <button onclick="w3_close()" class="closebtn">Close;</button>
+            <button onclick="w3_close()" class="closebtn">Close</button>
             <br />
             <label for="startDate">Start Date:</label>
             <input type="date" id="startDate">
@@ -68,6 +92,8 @@
             <input type="date" id="endDate">
             <br />
             <input type="submit" id="submit">
+            <div class="dropdown" id="dropdown">
+            </div>
         </p>
         <div id="chartLegend"></div>
     </div>
