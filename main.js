@@ -120,7 +120,7 @@ App.main = async function (applicationArguments) {
             .attr("y", yCoord);
     }
 
-    function addLegendContent(testsData, flavors, ordinal, domName, numTests) {
+    function addLegendContent(testsData, flavors, ordinal, domName) {
         let chartParagraph = d3.select(domName);
         chartParagraph.append("h1").html("Chart Legend");
         let selection = chartParagraph.append("div");
@@ -133,7 +133,7 @@ App.main = async function (applicationArguments) {
                 .attr("id", lineClass)
                 .on("click", function () {
                     if (this.checked === false) {
-                        for (let i = 0; i < numTests; i++) {
+                        for (let i = 0; i < testsData.length; i++) {
                             let curTest = testsData[i];
                             let flavorResults = curTest.data.filter(function (d) {
                                 return d.flavor === lineClass;
@@ -146,7 +146,7 @@ App.main = async function (applicationArguments) {
                             updateGraph(curTest, flavors, ordinal);
                         }
                     } else {
-                        for (let i = 0; i < numTests; i++) {
+                        for (let i = 0; i < testsData.length; i++) {
                             let curTest = testsData[i];
                             let flavorResults = curTest.hiddenData.filter(function (d) {
                                 return d.flavor === lineClass;
@@ -269,9 +269,15 @@ App.main = async function (applicationArguments) {
             dropdownDiv.append("p")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => updateOnDatesPreset(testsData, flavors, ordinal, filters[i]));
+                .on("click", () => updateOnFiltersPreset(testsData, flavors, ordinal, filters[i]));
         }
         dropdownDiv.append("br");
+    }
+    function updateOnFiltersPreset(testsData, flavors, ordinal, filter) {
+        let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
+        console.log(wantedFlavors);
+        wantedFlavors.forEach(x => console.log(d3.selectAll(x)));
+
     }
 
     function updateOnDatesPreset(testsData, flavors, ordinal, filter) {
@@ -291,6 +297,9 @@ App.main = async function (applicationArguments) {
             case "last 3 months":
                 startDate.setMonth(endDate.getMonth() - 3);
                 break;
+            case "whole history":
+                startDate.setDate(0);
+                break;
             default:
                 break;
         }
@@ -299,9 +308,13 @@ App.main = async function (applicationArguments) {
             updateTestDataOnDates(testsData[i], startDate, endDate);
             updateGraph(testsData[i], flavors, ordinal);
         }
+
+        d3.select("#startDate").transition().valueAsDate = startDate;
+        console.log(d3.select("#startDate"));
+        
     }
 
-    function updateOnDatePicker(testsData, flavors, ordinal, numTests) {
+    function updateOnDatePicker(testsData, flavors, ordinal) {
         let startDate = null;
         let endDate = null;
 
@@ -321,7 +334,7 @@ App.main = async function (applicationArguments) {
                 if (startDate.getTime() >= endDate.getTime()) {
                     alert("Choose valid dates!");
                 } else {
-                    for (let i = 0; i < numTests; i++) {
+                    for (let i = 0; i < testsData.length; i++) {
                         let curTest = testsData[i];
                         updateTestDataOnDates(curTest, startDate, endDate);
                         updateGraph(curTest, flavors, ordinal);
@@ -366,13 +379,12 @@ App.main = async function (applicationArguments) {
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, ordinal, i));
     }
-    let datePresets = ["last week", "last 14 days", "last month", "last 3 months"];
+    let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
-
     addDatePresets("Date Presets", datePresets, "#dropdown", testsData, flavors, ordinal);
-    updateOnDatePicker(testsData, flavors, ordinal, numTests);
-    addLegendContent(testsData, flavors, ordinal, "#chartLegend", numTests);
-    
+    updateOnDatePicker(testsData, flavors, ordinal);
+    addLegendContent(testsData, flavors, ordinal, "#chartLegend");
+
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
 
