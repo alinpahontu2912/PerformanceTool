@@ -311,7 +311,9 @@ App.main = async function (applicationArguments) {
 
         d3.select("#startDate").transition().valueAsDate = startDate;
         console.log(d3.select("#startDate"));
-        
+
+        $('#startDate').value = startDate.toISOString().split('T')[0];
+        $('#endDate').value = endDate.toISOString().split('T')[0];
     }
 
     function updateOnDatePicker(testsData, flavors, ordinal) {
