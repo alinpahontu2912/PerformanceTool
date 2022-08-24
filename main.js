@@ -20,6 +20,11 @@ App.main = async function (applicationArguments) {
         }
     }
 
+    function getFirstTestDate(data) {
+        let datesArray = data.map(d => d.time);
+        return new Date(Math.min(...datesArray));
+    }
+
     function getContentFromFlavor(flavors) {
         let set = new Set();
         flavors.forEach(function (flavor) {
@@ -47,7 +52,7 @@ App.main = async function (applicationArguments) {
 
     function getLastDaysData(data, numOfDays) {
         let timeDif = 1000 * 60 * 60 * 24 * numOfDays;
-        let lastTest = data[data.length - 1].time;
+        let lastTest = new Date();
         let result = data.filter(x => x.time >= lastTest - timeDif);
         return result;
     }
@@ -131,7 +136,7 @@ App.main = async function (applicationArguments) {
                 .attr("type", "checkbox")
                 .attr("checked", "true")
                 .attr("id", lineClass)
-                .on("click", function () {
+                .on("change", function () {
                     if (this.checked === false) {
                         for (let i = 0; i < testsData.length; i++) {
                             let curTest = testsData[i];
@@ -169,6 +174,16 @@ App.main = async function (applicationArguments) {
 
     }
 
+    function removeOldData(testData, flavors) {
+        for (let i = 0; i < flavors.length; i++) {
+            let escapedFlavor = flavors[i].replaceAll(regex, '');
+            let className = escapedFlavor + testData.taskId;
+            d3.select("." + className).remove();
+            let circleGroupName = escapedFlavor + "circleData" + testData.taskId;
+            d3.select("." + circleGroupName).remove();
+        }
+    }
+
     function updateGraph(testData, flavors, ordinal) {
 
         testData.x.domain(d3.extent(testData.data, function (d) { return d.time }));
@@ -181,16 +196,8 @@ App.main = async function (applicationArguments) {
         d3.selectAll(".xAxis .tick text")
             .attr("transform", "rotate(-15)");
 
-        var escapedFlavor = "";
-
-        for (let i = 0; i < flavors.length; i++) {
-            escapedFlavor = flavors[i].replaceAll(regex, '');
-            let className = escapedFlavor + testData.taskId;
-            d3.select("." + className).remove();
-            let circleGroupName = escapedFlavor + "circleData" + testData.taskId;
-            d3.select("." + circleGroupName).remove();
-        }
-
+        removeOldData(testData, flavors)
+        let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
         let flvs = testData.availableFlavors;
         for (let i = 0; i < flvs.length; i++) {
@@ -200,7 +207,7 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function buildGraph(allData, flavors, ordinal, taskId) {
+    function buildGraph(allData, flavors, taskId) {
 
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
@@ -238,7 +245,6 @@ App.main = async function (applicationArguments) {
         let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
         let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxis);
         testData.data = getLastDaysData(testData.allData, 14);
-        updateGraph(testData, flavors, ordinal);
         return testData;
     }
 
@@ -252,13 +258,13 @@ App.main = async function (applicationArguments) {
         return dropdownDiv;
     }
 
-    function addDatePresets(presetName, filters, domName, testsData, flavors, ordinal) {
+    function addDatePresets(presetName, firstDate, filters, domName, testsData, flavors, ordinal) {
         let dropdownDiv = createNewDropDown(presetName, domName);
         for (let i = 0; i < filters.length; i++) {
             dropdownDiv.append("p")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => updateOnDatesPreset(testsData, flavors, ordinal, filters[i]));
+                .on("click", () => updateOnDatesPreset(testsData, firstDate, flavors, ordinal, filters[i]));
         }
         dropdownDiv.append("br");
     }
@@ -273,14 +279,48 @@ App.main = async function (applicationArguments) {
         }
         dropdownDiv.append("br");
     }
+
+    function updateCheckboxes(allFlavors, wantedFlavors) {
+        for (let i = 0; i < allFlavors.length; i++) {
+            document.getElementById(allFlavors[i]).checked = false;
+        }
+        for (let i = 0; i < wantedFlavors.length; i++) {
+            document.getElementById(wantedFlavors[i]).checked = true;
+        }
+    }
+
+    function addSelectAllButton(flavors) {
+        d3.select("#selectAll").on("click", function () {
+            for (let i = 0; i < flavors.length; i++) {
+                if (document.getElementById(flavors[i]).checked === false) {
+                    document.getElementById(flavors[i]).click();
+                }
+            }
+        });
+    }
+
     function updateOnFiltersPreset(testsData, flavors, ordinal, filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
-        console.log(wantedFlavors);
-        wantedFlavors.forEach(x => console.log(d3.selectAll(x)));
+        updateCheckboxes(flavors, wantedFlavors);
+        for (let i = 0; i < testsData.length; i++) {
+            let curTest = testsData[i];
+            curTest.data = curTest.data.concat(curTest.hiddenData);
+            curTest.hiddenData.length = 0;
+            let flavorResults = curTest.data.filter(function (d) {
+                return !wantedFlavors.includes(d.flavor);
+            });
+            curTest.hiddenData = flavorResults;
+            curTest.data = curTest.data.filter(function (d) {
+                return wantedFlavors.includes(d.flavor);
+            });
+            curTest.availableFlavors.length = 0;
+            curTest.availableFlavors = Array.from(wantedFlavors);
+            updateGraph(curTest, flavors, ordinal);
+        }
 
     }
 
-    function updateOnDatesPreset(testsData, flavors, ordinal, filter) {
+    function updateOnDatesPreset(testsData, firstDate, flavors, ordinal, filter = '') {
         let startDate = new Date();
         let endDate = new Date();
 
@@ -298,9 +338,10 @@ App.main = async function (applicationArguments) {
                 startDate.setMonth(endDate.getMonth() - 3);
                 break;
             case "whole history":
-                startDate.setDate(0);
+                startDate = firstDate;
                 break;
             default:
+                startDate.setDate(endDate.getDate() - 14);
                 break;
         }
 
@@ -308,9 +349,6 @@ App.main = async function (applicationArguments) {
             updateTestDataOnDates(testsData[i], startDate, endDate);
             updateGraph(testsData[i], flavors, ordinal);
         }
-
-        d3.select("#startDate").transition().valueAsDate = startDate;
-        console.log(d3.select("#startDate"));
 
         document.getElementById('startDate').valueAsDate = startDate;
         document.getElementById('endDate').valueAsDate = endDate;
@@ -337,9 +375,8 @@ App.main = async function (applicationArguments) {
                     alert("Choose valid dates!");
                 } else {
                     for (let i = 0; i < testsData.length; i++) {
-                        let curTest = testsData[i];
-                        updateTestDataOnDates(curTest, startDate, endDate);
-                        updateGraph(curTest, flavors, ordinal);
+                        updateTestDataOnDates(testsData[i], startDate, endDate);
+                        updateGraph(testsData[i], flavors, ordinal);
                     }
                 }
             }
@@ -356,7 +393,6 @@ App.main = async function (applicationArguments) {
         });
     }
 
-
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
@@ -366,6 +402,7 @@ App.main = async function (applicationArguments) {
             d.time = new Date(d.commitTime);
         }
     );
+    let firstDate = getFirstTestDate(data);
     let flavors = getDataProperties(data, 'flavor');
     let tasksNames = getDataProperties(data, 'taskMeasurementName');
     let numTests = tasksNames.length;
@@ -379,13 +416,16 @@ App.main = async function (applicationArguments) {
         .range(colors);
     let testsData = [];
     for (let i = 0; i < numTests; i++) {
-        testsData.push(buildGraph(data, flavors, ordinal, i));
+        testsData.push(buildGraph(data, flavors, i));
     }
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
-    addDatePresets("Date Presets", datePresets, "#dropdown", testsData, flavors, ordinal);
-    updateOnDatePicker(testsData, flavors, ordinal);
+    addSelectAllButton(flavors);
+    addDatePresets("Date Presets", firstDate, datePresets, "#dropdown", testsData, flavors, ordinal);
+    addGraphPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, ordinal);
     addLegendContent(testsData, flavors, ordinal, "#chartLegend");
+    updateOnDatePicker(testsData, flavors, ordinal);
+    updateOnDatesPreset(testsData, firstDate, flavors, ordinal);
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
