@@ -125,11 +125,12 @@ App.main = async function (applicationArguments) {
             .attr("y", yCoord);
     }
 
-    function addLegendContent(testsData, flavors, ordinal, domName) {
+    function addLegendContent(testsData, flavors, domName) {
         let chartParagraph = d3.select(domName);
         chartParagraph.append("h1").html("Chart Legend");
         let selection = chartParagraph.append("div");
-        for (let i = 0; i < flavors.length; i++) {
+        let flavorsLen = flavors.length;
+        for (let i = 0; i < flavorsLen; i++) {
             let lineClass = flavors[i];
             selection.append("br");
             selection.append("input")
@@ -138,7 +139,7 @@ App.main = async function (applicationArguments) {
                 .attr("id", lineClass)
                 .on("change", function () {
                     if (this.checked === false) {
-                        for (let i = 0; i < testsData.length; i++) {
+                        for (let i = 0; i < numTests; i++) {
                             let curTest = testsData[i];
                             let flavorResults = curTest.data.filter(function (d) {
                                 return d.flavor === lineClass;
@@ -148,21 +149,20 @@ App.main = async function (applicationArguments) {
                                 return !flavorResults.includes(d);
                             });
                             curTest.availableFlavors.splice(curTest.availableFlavors.indexOf(lineClass), 1);
-                            updateGraph(curTest, flavors, ordinal);
+                            updateGraph(curTest, flavors);
                         }
                     } else {
-                        for (let i = 0; i < testsData.length; i++) {
+                        for (let i = 0; i < numTests; i++) {
                             let curTest = testsData[i];
                             let flavorResults = curTest.hiddenData.filter(function (d) {
                                 return d.flavor === lineClass;
                             });
                             curTest.data = curTest.data.concat(flavorResults);
                             curTest.availableFlavors.push(lineClass);
-
                             curTest.hiddenData = curTest.hiddenData.filter(function (d) {
                                 return !flavorResults.includes(d);
                             });
-                            updateGraph(curTest, flavors, ordinal);
+                            updateGraph(curTest, flavors);
                         }
                     }
                 });
@@ -175,7 +175,8 @@ App.main = async function (applicationArguments) {
     }
 
     function removeOldData(testData, flavors) {
-        for (let i = 0; i < flavors.length; i++) {
+        let flavorsLen = flavors.length;
+        for (let i = 0; i < flavorsLen; i++) {
             let escapedFlavor = flavors[i].replaceAll(regex, '');
             let className = escapedFlavor + testData.taskId;
             d3.select("." + className).remove();
@@ -184,7 +185,7 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function updateGraph(testData, flavors, ordinal) {
+    function updateGraph(testData, flavors) {
 
         testData.x.domain(d3.extent(testData.data, function (d) { return d.time }));
         testData.xAxis.transition().duration(1500).call(d3.axisBottom(testData.x)
@@ -258,40 +259,45 @@ App.main = async function (applicationArguments) {
         return dropdownDiv;
     }
 
-    function addDatePresets(presetName, firstDate, filters, domName, testsData, flavors, ordinal) {
+    function addDatePresets(presetName, filters, domName, testsData, flavors) {
         let dropdownDiv = createNewDropDown(presetName, domName);
-        for (let i = 0; i < filters.length; i++) {
+        let filtersLen = filters.length;
+        for (let i = 0; i < filtersLen; i++) {
             dropdownDiv.append("p")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => updateOnDatesPreset(testsData, firstDate, flavors, ordinal, filters[i]));
+                .on("click", () => updateOnDatesPreset(testsData, flavors, filters[i]));
         }
         dropdownDiv.append("br");
     }
 
-    function addGraphPresets(presetName, filters, domName, testsData, flavors, ordinal) {
+    function addGraphPresets(presetName, filters, domName, testsData, flavors) {
         let dropdownDiv = createNewDropDown(presetName, domName);
-        for (let i = 0; i < filters.length; i++) {
+        let filtersLen = filters.length;
+        for (let i = 0; i < filtersLen; i++) {
             dropdownDiv.append("p")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => updateOnFiltersPreset(testsData, flavors, ordinal, filters[i]));
+                .on("click", () => updateOnFiltersPreset(testsData, flavors, filters[i]));
         }
         dropdownDiv.append("br");
     }
 
     function updateCheckboxes(allFlavors, wantedFlavors) {
-        for (let i = 0; i < allFlavors.length; i++) {
-            document.getElementById(allFlavors[i]).checked = false;
-        }
-        for (let i = 0; i < wantedFlavors.length; i++) {
-            document.getElementById(wantedFlavors[i]).checked = true;
+        let allFlavorsLen = allFlavors.length;
+        for (let i = 0; i < allFlavorsLen; i++) {
+            if (!wantedFlavors.includes(allFlavors[i])) {
+                document.getElementById(allFlavors[i]).checked = false;
+            } else {
+                document.getElementById(allFlavors[i]).checked = true
+            }
         }
     }
 
     function addSelectAllButton(flavors) {
         d3.select("#selectAll").on("click", function () {
-            for (let i = 0; i < flavors.length; i++) {
+            let filtersLen = flavors.length;
+            for (let i = 0; i < filtersLen; i++) {
                 if (document.getElementById(flavors[i]).checked === false) {
                     document.getElementById(flavors[i]).click();
                 }
@@ -299,10 +305,10 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function updateOnFiltersPreset(testsData, flavors, ordinal, filter) {
+    function updateOnFiltersPreset(testsData, flavors, filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
         updateCheckboxes(flavors, wantedFlavors);
-        for (let i = 0; i < testsData.length; i++) {
+        for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
             curTest.data = curTest.data.concat(curTest.hiddenData);
             curTest.hiddenData.length = 0;
@@ -315,12 +321,12 @@ App.main = async function (applicationArguments) {
             });
             curTest.availableFlavors.length = 0;
             curTest.availableFlavors = Array.from(wantedFlavors);
-            updateGraph(curTest, flavors, ordinal);
+            updateGraph(curTest, flavors);
         }
 
     }
 
-    function updateOnDatesPreset(testsData, firstDate, flavors, ordinal, filter = '') {
+    function updateOnDatesPreset(testsData, flavors, filter = '') {
         let startDate = new Date();
         let endDate = new Date();
 
@@ -345,16 +351,16 @@ App.main = async function (applicationArguments) {
                 break;
         }
 
-        for (let i = 0; i < testsData.length; i++) {
+        for (let i = 0; i < numTests; i++) {
             updateTestDataOnDates(testsData[i], startDate, endDate);
-            updateGraph(testsData[i], flavors, ordinal);
+            updateGraph(testsData[i], flavors);
         }
 
         document.getElementById('startDate').valueAsDate = startDate;
         document.getElementById('endDate').valueAsDate = endDate;
     }
 
-    function updateOnDatePicker(testsData, flavors, ordinal) {
+    function updateOnDatePicker(testsData, flavors) {
         let startDate = null;
         let endDate = null;
 
@@ -374,9 +380,9 @@ App.main = async function (applicationArguments) {
                 if (startDate.getTime() >= endDate.getTime()) {
                     alert("Choose valid dates!");
                 } else {
-                    for (let i = 0; i < testsData.length; i++) {
+                    for (let i = 0; i < numTests; i++) {
                         updateTestDataOnDates(testsData[i], startDate, endDate);
-                        updateGraph(testsData[i], flavors, ordinal);
+                        updateGraph(testsData[i], flavors);
                     }
                 }
             }
@@ -402,16 +408,16 @@ App.main = async function (applicationArguments) {
             d.time = new Date(d.commitTime);
         }
     );
-    let firstDate = getFirstTestDate(data);
-    let flavors = getDataProperties(data, 'flavor');
+    var flavors = getDataProperties(data, 'flavor');
     let tasksNames = getDataProperties(data, 'taskMeasurementName');
-    let numTests = tasksNames.length;
+    var firstDate = getFirstTestDate(data);
+    var numTests = tasksNames.length;
     var tasksIds = new Map();
     tasksNames.map(function (d, i) {
         tasksIds[i] = d;
     });
     let colors = d3.schemeCategory10;
-    let ordinal = d3.scaleOrdinal()
+    var ordinal = d3.scaleOrdinal()
         .domain(flavors)
         .range(colors);
     let testsData = [];
@@ -421,11 +427,11 @@ App.main = async function (applicationArguments) {
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
     addSelectAllButton(flavors);
-    addDatePresets("Date Presets", firstDate, datePresets, "#dropdown", testsData, flavors, ordinal);
-    addGraphPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, ordinal);
-    addLegendContent(testsData, flavors, ordinal, "#chartLegend");
-    updateOnDatePicker(testsData, flavors, ordinal);
-    updateOnDatesPreset(testsData, firstDate, flavors, ordinal);
+    addDatePresets("Date Presets", datePresets, "#dropdown", testsData, flavors);
+    addGraphPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors);
+    addLegendContent(testsData, flavors, "#chartLegend");
+    updateOnDatePicker(testsData, flavors);
+    updateOnDatesPreset(testsData, flavors);
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
