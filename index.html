@@ -10,23 +10,31 @@
     <link rel="modulepreload" href="./main.js" />
     <link rel="modulepreload" href="./dotnet.js" />
     <style>
-        text {
-            cursor: default;
+        body {
             font-family: sans-serif;
-        }
-
-        h1 {
-            display: inline-block;
-            padding: 10px 10px 10px 10px;
-            font-family: sans-serif;
+            font-weight: 500;
         }
 
         p {
+            text-align: center;
             font-family: sans-serif;
+            font-weight: 500;
+            padding: 10px 10px 10px 10px;
         }
 
-        checkbox {
+        text {
+            cursor: default
+        }
+
+        h1 {
             font-family: sans-serif;
+            font-weight: 800;
+        }
+
+        h2 {
+            text-align: center;
+            font-family: sans-serif;
+            font-weight: 800;
         }
 
         button {
@@ -34,15 +42,28 @@
             background-color: #ffffff;
             font-size: 12px;
             border-radius: 6px;
-            padding: 10px 10px 10px 10px;
+            padding: 5px 5px 5px 5px;
             letter-spacing: 2px;
-            cursor: pointer
+            cursor: pointer;
         }
 
             button:hover {
                 color: #376fd7;
                 background-color: #ffffff;
             }
+
+        .closebtn {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            color: #000000;
+            background-color: #ffffff;
+            font-size: 12px;
+            border-radius: 6px;
+            padding: 5px 5px 5px 5px;
+            letter-spacing: 2px;
+            cursor: pointer
+        }
 
         #charts {
             transition: margin-left .5s;
@@ -75,14 +96,12 @@
             }
 
         .dropbtn {
-            font-family: sans-serif;
             padding: 16px;
             border: none;
             cursor: pointer;
         }
 
         .dropdown-content {
-            font-family: sans-serif;
             display: none;
             background-color: #f9f9f9;
             min-width: 160px;

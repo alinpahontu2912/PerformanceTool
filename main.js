@@ -127,7 +127,7 @@ App.main = async function (applicationArguments) {
 
     function addLegendContent(testsData, flavors, domName) {
         let chartParagraph = d3.select(domName);
-        chartParagraph.append("h1").html("Chart Legend");
+        chartParagraph.append("h2").html("Chart Legend");
         let selection = chartParagraph.append("div");
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
@@ -411,11 +411,10 @@ App.main = async function (applicationArguments) {
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
     let data = JSON.parse(value);
-    data.forEach(
-        function (d) {
-            d.time = new Date(d.commitTime);
-        }
-    );
+    let dataLen = data.length;
+    for (let i = 0; i < dataLen; i++) {
+        data[i].time = new Date(data[i].commitTime);
+    }
     var flavors = getDataProperties(data, 'flavor');
     let tasksNames = getDataProperties(data, 'taskMeasurementName');
     var firstDate = getFirstTestDate(data);
