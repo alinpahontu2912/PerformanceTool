@@ -132,7 +132,6 @@ App.main = async function (applicationArguments) {
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
             let lineClass = flavors[i];
-            selection.append("br");
             selection.append("input")
                 .attr("type", "checkbox")
                 .attr("checked", "true")
@@ -169,7 +168,8 @@ App.main = async function (applicationArguments) {
             selection.append("label")
                 .attr("for", lineClass)
                 .style("color", ordinal(flavors[i]))
-                .html(flavors[i]);
+                .html(flavors[i])
+                .append("br");
         }
 
     }
@@ -208,9 +208,16 @@ App.main = async function (applicationArguments) {
         }
     }
 
+    function addRegexText() {
+        d3.select("#regexSubmit").on("click", function () {
+            let regex = document.getElementById("flavorText").value;
+            regexUpdate(testsData, flavors, regex);
+        });
+    }
+
     function buildGraph(allData, flavors, taskId) {
 
-        const width = 800 - margin.left - margin.right;
+        const width = 1000 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
         let taskName = tasksIds[taskId];
         let data = allData.filter(d => d.taskMeasurementName === taskName);
@@ -293,8 +300,7 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function updateOnFiltersPreset(testsData, flavors, filter) {
-        let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
+    function updateDataByFilters(testsData, flavors, wantedFlavors) {
         updateCheckboxes(flavors, wantedFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
@@ -311,10 +317,24 @@ App.main = async function (applicationArguments) {
             curTest.availableFlavors = Array.from(wantedFlavors);
             updateGraph(curTest, flavors);
         }
+    }
+
+    function filtersPreset(testsData, flavors, filter) {
+        let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
+        updateDataByFilters(testsData, flavors, wantedFlavors);
+    }
+
+    function regexUpdate(testsData, flavors, filter) {
+        let wantedFlavors = flavors.filter(flavor => flavor.match(filter));
+        if (wantedFlavors.length !== 0) {
+            updateDataByFilters(testsData, flavors, wantedFlavors);
+        } else {
+            alert("Invalid Regex");
+        }
 
     }
 
-    function updateOnDatesPreset(testsData, flavors, filter = '') {
+    function datesPreset(testsData, flavors, filter = '') {
         let startDate = new Date();
         let endDate = new Date();
 
@@ -412,14 +432,15 @@ App.main = async function (applicationArguments) {
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
     }
+    addRegexText();
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
     addSelectAllButton(flavors);
-    addPresets("Date Presets", datePresets, "#dropdown", testsData, flavors, updateOnDatesPreset);
-    addPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, updateOnFiltersPreset);
+    addPresets("Date Presets", datePresets, "#dropdown", testsData, flavors, datesPreset);
+    addPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, filtersPreset);
     addLegendContent(testsData, flavors, "#chartLegend");
     updateOnDatePicker(testsData, flavors);
-    updateOnDatesPreset(testsData, flavors);
+    datesPreset(testsData, flavors);
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
