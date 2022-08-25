@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO.Compression;
 using System.IO;
 using System.Runtime.InteropServices.JavaScript;
@@ -52,7 +53,7 @@ public partial class Program
             {
                 foreach (var pair in data[i].sizes)
                 {
-                    list.Add(new GraphPointData(data[i].commitTime.ToString(), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, "bytes"));
+                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, "bytes"));
                 }
             }
         }
