@@ -47,7 +47,7 @@ public partial class Program
             var logUrl = measurementsUrl + data[i].hash + "/" + flavor + gitLogFile;
             foreach (var pair in data[i].minTimes)
             {
-                list.Add(new GraphPointData(data[i].commitTime.ToString(), data[i].flavor, pair, logUrl));
+                list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl));
             }
             if (data[i].sizes != null)
             {
