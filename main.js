@@ -259,26 +259,14 @@ App.main = async function (applicationArguments) {
         return dropdownDiv;
     }
 
-    function addDatePresets(presetName, filters, domName, testsData, flavors) {
+    function addPresets(presetName, filters, domName, testsData, flavors, callback) {
         let dropdownDiv = createNewDropDown(presetName, domName);
         let filtersLen = filters.length;
         for (let i = 0; i < filtersLen; i++) {
             dropdownDiv.append("p")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => updateOnDatesPreset(testsData, flavors, filters[i]));
-        }
-        dropdownDiv.append("br");
-    }
-
-    function addGraphPresets(presetName, filters, domName, testsData, flavors) {
-        let dropdownDiv = createNewDropDown(presetName, domName);
-        let filtersLen = filters.length;
-        for (let i = 0; i < filtersLen; i++) {
-            dropdownDiv.append("p")
-                .attr("id", filters[i])
-                .html(filters[i])
-                .on("click", () => updateOnFiltersPreset(testsData, flavors, filters[i]));
+                .on("click", () => callback(testsData, flavors, filters[i]));
         }
         dropdownDiv.append("br");
     }
@@ -427,12 +415,11 @@ App.main = async function (applicationArguments) {
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
     addSelectAllButton(flavors);
-    addDatePresets("Date Presets", datePresets, "#dropdown", testsData, flavors);
-    addGraphPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors);
+    addPresets("Date Presets", datePresets, "#dropdown", testsData, flavors, updateOnDatesPreset);
+    addPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, updateOnFiltersPreset);
     addLegendContent(testsData, flavors, "#chartLegend");
     updateOnDatePicker(testsData, flavors);
     updateOnDatesPreset(testsData, flavors);
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
-
