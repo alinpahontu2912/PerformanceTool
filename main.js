@@ -4,6 +4,7 @@ App.main = async function (applicationArguments) {
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
+
     class TaskData {
         constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxis) {
             this.taskId = taskId;
@@ -18,6 +19,18 @@ App.main = async function (applicationArguments) {
             this.hiddenData = [];
             this.availableFlavors = flavors;
         }
+    }
+
+    function mapTestsToTasks(testNames) {
+        let testsMap = new Map();
+        for (let i = 0; i < numTests; i++) {
+            let [task, test] = testNames[i].split(",")
+            if (!testsMap.has(task)) {
+                testsMap.set(task, []);
+            }
+            testsMap.get(task).push(test);
+        }
+        return testsMap;
     }
 
     function getFirstTestDate(data) {
@@ -126,7 +139,7 @@ App.main = async function (applicationArguments) {
     }
 
     function addLegendContent(testsData, flavors, domName) {
-        let chartParagraph = d3.select(domName);
+        let chartParagraph = d3.select("#" + domName);
         chartParagraph.append("h2").html("Chart Legend");
         let selection = chartParagraph.append("div");
         let flavorsLen = flavors.length;
@@ -208,11 +221,24 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function addRegexText() {
-        d3.select("#regexSubmit").on("click", function () {
+    function addRegexText(domName) {
+        d3.select("#" + domName).on("click", function () {
             let regex = document.getElementById("flavorText").value;
             regexUpdate(testsData, flavors, regex);
+            document.getElementById("flavorText").value = "";
         });
+    }
+
+    function appendCollapsibles(domName, testsToTasks) {
+        let tasks = [...testsToTasks.keys()].sort();
+        let tasksLen = testsToTasks.size;
+        for (let i = 0; i < tasksLen; i++) {
+            let collapsible = d3.select("#" + domName)
+                .append("details")
+                .attr("id", tasks[i] + "collapsible");
+            collapsible.append("summary")
+                .html(tasks[i]);
+        }
     }
 
     function buildGraph(allData, flavors, taskId) {
@@ -220,11 +246,9 @@ App.main = async function (applicationArguments) {
         const width = 1000 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
         let taskName = tasksIds[taskId];
+        let [task, test] = taskName.split(",");
         let data = allData.filter(d => d.taskMeasurementName === taskName);
-        let collapsible = d3.select("#graphs")
-            .append("details")
-        collapsible.append("summary")
-            .html(taskName);
+        let collapsible = d3.select("#" + task + "collapsible");
         let dataGroup = collapsible
             .append("div")
             .append("svg")
@@ -249,7 +273,7 @@ App.main = async function (applicationArguments) {
         let yAxis = dataGroup
             .append("g")
             .attr("class", "yAxis");
-
+        let title = addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "15pt", test, "black");
         let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
         let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxis);
         testData.data = getLastDaysData(testData.allData, 14);
@@ -257,7 +281,9 @@ App.main = async function (applicationArguments) {
     }
 
     function createNewDropDown(presetName, domName) {
-        let dropdown = d3.select(domName);
+        let dropdown = d3.select("#" + domName)
+            .append("div")
+            .attr("class", "dropdown");
         dropdown.append("button")
             .attr("class", "dropbtn")
             .html(presetName);
@@ -289,8 +315,8 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function addSelectAllButton(flavors) {
-        d3.select("#selectAll").on("click", function () {
+    function addSelectAllButton(domName, flavors) {
+        d3.select("#" + domName).on("click", function () {
             let filtersLen = flavors.length;
             for (let i = 0; i < filtersLen; i++) {
                 if (document.getElementById(flavors[i]).checked === false) {
@@ -300,7 +326,7 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function updateDataByFilters(testsData, flavors, wantedFlavors) {
+    function updateDataByFlavor(testsData, flavors, wantedFlavors) {
         updateCheckboxes(flavors, wantedFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
@@ -319,15 +345,20 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function filtersPreset(testsData, flavors, filter) {
+    function chartsPreset(testsData, flavors, filter) {
+        let open = document.getElementById(filter + "collapsible").open;
+        document.getElementById(filter + "collapsible").open = open === true ? false : true;
+    }
+
+    function flavorsPreset(testsData, flavors, filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
-        updateDataByFilters(testsData, flavors, wantedFlavors);
+        updateDataByFlavor(testsData, flavors, wantedFlavors);
     }
 
     function regexUpdate(testsData, flavors, filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.match(filter));
         if (wantedFlavors.length !== 0) {
-            updateDataByFilters(testsData, flavors, wantedFlavors);
+            updateDataByFlavor(testsData, flavors, wantedFlavors);
         } else {
             alert("Invalid Regex");
         }
@@ -415,12 +446,16 @@ App.main = async function (applicationArguments) {
     for (let i = 0; i < dataLen; i++) {
         data[i].time = new Date(data[i].commitTime);
     }
-    var flavors = getDataProperties(data, 'flavor');
-    let tasksNames = getDataProperties(data, 'taskMeasurementName');
+
+    let flavors = getDataProperties(data, 'flavor');
+    let testNames = getDataProperties(data, 'taskMeasurementName');
+    let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
+    let graphFilters = getContentFromFlavor(flavors);
     var firstDate = getFirstTestDate(data);
-    var numTests = tasksNames.length;
+    var numTests = testNames.length;
     var tasksIds = new Map();
-    tasksNames.map(function (d, i) {
+    const testToTask = mapTestsToTasks(testNames);
+    testNames.map(function (d, i) {
         tasksIds[i] = d;
     });
     let colors = d3.schemeCategory10;
@@ -428,16 +463,18 @@ App.main = async function (applicationArguments) {
         .domain(flavors)
         .range(colors);
     let testsData = [];
+    appendCollapsibles("graphs", testToTask);
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
     }
-    addRegexText();
-    let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
-    let graphFilters = getContentFromFlavor(flavors);
-    addSelectAllButton(flavors);
-    addPresets("Date Presets", datePresets, "#dropdown", testsData, flavors, datesPreset);
-    addPresets("Flavor Presets", graphFilters, "#dropdown", testsData, flavors, filtersPreset);
-    addLegendContent(testsData, flavors, "#chartLegend");
+
+    addRegexText("regexSubmit");
+    addSelectAllButton("selectAll", flavors);
+    addPresets("Date Presets", datePresets, "attachDropdown", testsData, flavors, datesPreset);
+    addPresets("Flavor Presets", graphFilters, "attachDropdown", testsData, flavors, flavorsPreset);
+    addPresets("Charts Presets", [...testToTask.keys()], "attachDropdown", [], [], chartsPreset);
+
+    addLegendContent(testsData, flavors, "chartLegend");
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
 
