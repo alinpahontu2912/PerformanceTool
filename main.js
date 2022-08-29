@@ -472,8 +472,7 @@ App.main = async function (applicationArguments) {
     addSelectAllButton("selectAll", flavors);
     addPresets("Date Presets", datePresets, "attachDropdown", testsData, flavors, datesPreset);
     addPresets("Flavor Presets", graphFilters, "attachDropdown", testsData, flavors, flavorsPreset);
-    addPresets("Charts Presets", [...testToTask.keys()], "attachDropdown", [], [], chartsPreset);
-
+    addPresets("Charts Presets", [...testToTask.keys()].sort(), "attachDropdown", [], [], chartsPreset);
     addLegendContent(testsData, flavors, "chartLegend");
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
