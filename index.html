@@ -9,6 +9,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="modulepreload" href="./main.js" />
     <link rel="modulepreload" href="./dotnet.js" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+
     <style>
         body {
             font-family: sans-serif;
@@ -33,6 +38,8 @@
         h1 {
             font-family: sans-serif;
             font-weight: 800;
+            margin: 0;
+            display: inline-block;
         }
 
         h2 {
@@ -41,33 +48,20 @@
             font-weight: 800;
         }
 
-        .openbtn {
-            cursor: pointer;
-            background-color: #111;
-            color: white;
-            padding: 10px 10px 10px 10px;
-            border: none;
-        }
-
-            .openbtn:hover {
-                background-color: #325e33cc;
-            }
-
         button {
             color: #000000;
             background-color: #ffffff;
             font-size: 15px;
             font-weight: 500;
             border-radius: 6px;
-            padding: 7px 7px 7px 7px;
+            padding: 10px 10px 10px 10px;
             letter-spacing: 2px;
             cursor: pointer;
             float: right;
         }
 
             button:hover {
-                color: #292929;
-                background-color: #ffffff;
+                background-color: #325e33cc;
             }
 
         #charts {
@@ -131,37 +125,42 @@
     </style>
 </head>
 <body>
-    <div id="mySidebar" class="sidebar">
-
+    <div class="d-flex justify-content-center">
+        <div id="loadingCircle" class="spinner-border" style="width: 6rem; height: 6rem; top: 50%; position: fixed; " role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    <div id="mySidebar" class="sidebar justify-content-center">
         <label for="startDate">Start Date:</label>
         <input type="date" id="startDate">
         <br />
         <label for="endDate">End Date:</label>
         <input type="date" id="endDate">
         <br />
-        <button type="submit" id="submit">Submit</button>
-        <br />
+        <button type="submit" id="submit">Choose Dates</button>
+        <br><br>
         <div id="attachDropdown"></div>
         <label for="flavorText">Flavor Regex:</label>
         <input type="text" id="flavorText"><br><br>
         <button type="submit" id="regexSubmit">Filter Flavors</button>
-        <br />
-        <div id="chartLegend"></div>
+        <br><br>
+        <form id="chartLegend"></form>
         <button type="submit" id="selectAll">Select All</button>
     </div>
     <div id="charts">
-        <button class="openbtn" onclick="navigate_sidebar()">☰ Menu</button>
-        <h1>Tasks List</h1>
+        <h1>Tasks List</h1><button class="openbtn" onclick="navigate_sidebar()">☰ Menu</button>
         <div id="graphs"></div>
     </div>
     <script>
+        document.getElementById("charts").style.display = 'none';
+        document.getElementById("mySidebar").style.display = 'none';
         function navigate_sidebar() {
             let width = document.getElementById("mySidebar").style.width;
             document.getElementById("mySidebar").style.width = width == "300px" ? "0px" : "300px";
             document.getElementById("charts").style.marginLeft = width == "300px" ? "0px" : "300px";
         }
-
     </script>
     <script type='module' src="./main.js"></script>
 </body>
+
 </html>

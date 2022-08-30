@@ -477,5 +477,9 @@ App.main = async function (applicationArguments) {
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
 
+    document.querySelector("#loadingCircle").style.display = 'none';
+    document.querySelector("#charts").style.display = '';
+    document.querySelector("#mySidebar").style.display = '';
+
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
