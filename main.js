@@ -140,12 +140,12 @@ App.main = async function (applicationArguments) {
 
     function addLegendContent(testsData, flavors, domName) {
         let chartParagraph = d3.select("#" + domName);
-        chartParagraph.append("h2").html("Chart Legend");
-        let selection = chartParagraph.append("div");
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
             let lineClass = flavors[i];
+            let selection = chartParagraph.append("li");
             selection.append("input")
+                .attr("class", "form-check-input")
                 .attr("type", "checkbox")
                 .attr("checked", "true")
                 .attr("id", lineClass)
@@ -179,10 +179,10 @@ App.main = async function (applicationArguments) {
                     }
                 });
             selection.append("label")
+                .attr("class", "form-check-label")
                 .attr("for", lineClass)
                 .style("color", ordinal(flavors[i]))
                 .html(flavors[i])
-                .append("br");
         }
 
     }
@@ -274,34 +274,22 @@ App.main = async function (applicationArguments) {
             .append("g")
             .attr("class", "yAxis");
         let title = addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "15pt", test, "black");
-        let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top, "15pt", `Results (${data[0].unit})`, "black", -90);
+        let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top * 1.1, "15pt", `Results (${data[0].unit})`, "black", -90);
         let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxis);
         testData.data = getLastDaysData(testData.allData, 14);
         return testData;
     }
 
-    function createNewDropDown(presetName, domName) {
-        let dropdown = d3.select("#" + domName)
-            .append("div")
-            .attr("class", "dropdown");
-        dropdown.append("button")
-            .attr("class", "dropbtn")
-            .html(presetName);
-        let dropdownDiv = dropdown.append("div")
-            .attr("class", "dropdown-content");
-        return dropdownDiv;
-    }
-
-    function addPresets(presetName, filters, domName, testsData, flavors, callback) {
-        let dropdownDiv = createNewDropDown(presetName, domName);
+    function addPresets(filters, domName, testsData, flavors, callback) {
         let filtersLen = filters.length;
+        let dropdownDiv = d3.select("#" + domName);
         for (let i = 0; i < filtersLen; i++) {
-            dropdownDiv.append("p")
+            dropdownDiv.append("li")
+                .append("a")
                 .attr("id", filters[i])
                 .html(filters[i])
                 .on("click", () => callback(testsData, flavors, filters[i]));
         }
-        dropdownDiv.append("br");
     }
 
     function updateCheckboxes(allFlavors, wantedFlavors) {
@@ -469,17 +457,16 @@ App.main = async function (applicationArguments) {
     }
 
     addRegexText("regexSubmit");
-    addSelectAllButton("selectAll", flavors);
-    addPresets("Date Presets", datePresets, "attachDropdown", testsData, flavors, datesPreset);
-    addPresets("Flavor Presets", graphFilters, "attachDropdown", testsData, flavors, flavorsPreset);
-    addPresets("Charts Presets", [...testToTask.keys()].sort(), "attachDropdown", [], [], chartsPreset);
+    //addSelectAllButton("selectAll", flavors);
+    addPresets(datePresets, "datesPresets", testsData, flavors, datesPreset);
+    addPresets(graphFilters, "flavorsPresets", testsData, flavors, flavorsPreset);
+    addPresets([...testToTask.keys()].sort(), "chartsPresets", [], [], chartsPreset);
     addLegendContent(testsData, flavors, "chartLegend");
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
 
     document.querySelector("#loadingCircle").style.display = 'none';
-    document.querySelector("#charts").style.display = '';
-    document.querySelector("#mySidebar").style.display = '';
+    document.querySelector("#main").style.display = '';
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
