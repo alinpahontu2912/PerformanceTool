@@ -108,7 +108,6 @@ App.main = async function (applicationArguments) {
         let lineGroup = testData.dataGroup.append("g")
             .selectAll("path")
             .data([data]);
-
         lineGroup
             .enter()
             .append("path")
@@ -143,7 +142,7 @@ App.main = async function (applicationArguments) {
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
             let lineClass = flavors[i];
-            let selection = chartParagraph.append("li");
+            let selection = chartParagraph.append("li").append("a");
             selection.append("input")
                 .attr("class", "form-check-input")
                 .attr("type", "checkbox")
@@ -213,7 +212,8 @@ App.main = async function (applicationArguments) {
         removeOldData(testData, flavors)
         let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
-        let flvs = testData.availableFlavors;
+        console.log(filteredData);
+        let flvs = [...filteredData.keys()]
         for (let i = 0; i < flvs.length; i++) {
             escapedFlavor = flvs[i].replaceAll(regex, '');
             plotVariable(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), escapedFlavor);
@@ -244,7 +244,7 @@ App.main = async function (applicationArguments) {
     function buildGraph(allData, flavors, taskId) {
 
         const width = 1000 - margin.left - margin.right;
-        const height = 400 - margin.top - margin.bottom;
+        const height = 500 - margin.top - margin.bottom;
         let taskName = tasksIds[taskId];
         let [task, test] = taskName.split(",");
         let data = allData.filter(d => d.taskMeasurementName === taskName);
@@ -303,16 +303,6 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function addSelectAllButton(domName, flavors) {
-        d3.select("#" + domName).on("click", function () {
-            let filtersLen = flavors.length;
-            for (let i = 0; i < filtersLen; i++) {
-                if (document.getElementById(flavors[i]).checked === false) {
-                    document.getElementById(flavors[i]).click();
-                }
-            }
-        });
-    }
 
     function updateDataByFlavor(testsData, flavors, wantedFlavors) {
         updateCheckboxes(flavors, wantedFlavors);
@@ -455,18 +445,16 @@ App.main = async function (applicationArguments) {
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
     }
-
     addRegexText("regexSubmit");
-    //addSelectAllButton("selectAll", flavors);
     addPresets(datePresets, "datesPresets", testsData, flavors, datesPreset);
     addPresets(graphFilters, "flavorsPresets", testsData, flavors, flavorsPreset);
     addPresets([...testToTask.keys()].sort(), "chartsPresets", [], [], chartsPreset);
     addLegendContent(testsData, flavors, "chartLegend");
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
-
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
+
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }

@@ -14,28 +14,30 @@
     <link rel="stylesheet" href="https://getbootstrap.com/docs/5.0/examples/sidebars/sidebars.css" />
 </head>
 <body>
-    <main id="main">
-        <div class="flex-shrink-0 p-3 bg-white" style="width: 15%;">
+    <main id="main" style="max-height: unset !important; height:100%">
+        <div class="flex-shrink-0 p-3 bg-white collapse collapse-horizontal show" style="width: 15%;" id="menu">
             <a class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
                 <span class="fs-5 fw-semibold">Menu</span>
             </a>
             <ul class="list-unstyled ps-0">
                 <li>
-                    <center>
-                        <label for="startDate">Start:</label>
-                        <input type="date" id="startDate">
-                        <label for="endDate">End:</label>
-                        <input type="date" id="endDate">
-                        <button class="btn align-items-center rounded collapsed" type="submit" id="submit">Pick Dates</button>
-                    </center>
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start</label>
+                        <input type="date" id="startDate" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End</label>
+                        <input type="date" id="endDate" class="form-control">
+                    </div>
+                    <button class="btn btn-block btn-primary" type="submit" id="submit">Pick Dates</button>
                 </li>
                 <li class="border-top my-3"></li>
                 <li>
-                    <center>
-                        <label for="flavorText">Flavor Regex:</label>
-                        <input type="text" id="flavorText"><br><br>
-                        <button class="btn align-items-center rounded collapsed" type="submit" id="regexSubmit">Filter Flavors</button>
-                    </center>
+                    <div class="mb-3">
+                        <label for="text" class="form-label">Flavor Regex</label>
+                        <input type="text" id="flavorText" class="form-control">
+                    </div>
+                    <button class="btn btn-block btn-primary" type="submit" id="regexSubmit">Filter Flavors</button>
                 </li>
                 <li class="border-top my-3"></li>
                 <li class="mb-1">
@@ -65,58 +67,39 @@
                         </ul>
                     </div>
                 </li>
-                <li class="border-top my-3"></li>
                 <li class="mb-1">
-                    <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#account-collapse" aria-expanded="true">
+                    <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#legend-collapse" aria-expanded="true">
                         Chart Legend
                     </button>
-                    <div class="collapse show" id="account-collapse">
+                    <div class="collapse show" id="legend-collapse">
                         <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small" id="chartLegend">
                         </ul>
                     </div>
                 </li>
             </ul>
         </div>
-
-        <div class="b-example-divider"></div>
-
-        <div style="width:85%; overflow-x: hidden; overflow-y: auto; text-align: justify;" id="charts">
-            <center><h1>Tasks List</h1></center>
+        <div class="b-example-divider" style="height: auto !important"></div>
+        <div style="width:85%; overflow-x: hidden; overflow-y: auto; text-align: justify; max-height: auto !important" id="charts" class="p-3">
+            <div class="d-flex">
+                <div class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+                        ☰
+                    </button>
+                </div>
+                <a class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom flex-fill">
+                    <span class="fs-5 fw-semibold"> Tasks List</span>
+                </a>
+            </div>
             <div id="graphs"></div>
         </div>
     </main>
-
     <div class="d-flex justify-content-center">
         <div id="loadingCircle" class="spinner-border" style="width: 6rem; height: 6rem; top: 50%; position: fixed; " role="status">
             <span class="sr-only">Loading...</span>
         </div>
     </div>
-    <!--<div id="mySidebar" class="sidebar justify-content-center">
-        <label for="startDate">Start Date:</label>
-        <input type="date" id="startDate">
-        <br />
-        <label for="endDate">End Date:</label>
-        <input type="date" id="endDate">
-        <br />
-        <button type="submit" id="submit">Choose Dates</button>
-        <br><br>
-        <div id="attachDropdown"></div>
-        <label for="flavorText">Flavor Regex:</label>
-        <input type="text" id="flavorText"><br><br>
-        <button type="submit" id="regexSubmit">Filter Flavors</button>
-        <br><br>
-        <form id="chartLegend"></form>
-        <button type="submit" id="selectAll">Select All</button>
-    </div>-->
-
     <script>
         document.getElementById("main").style.display = 'none';
-
-        function navigate_sidebar() {
-            let width = document.getElementById("mySidebar").style.width;
-            document.getElementById("mySidebar").style.width = width == "300px" ? "0px" : "300px";
-            document.getElementById("charts").style.marginLeft = width == "300px" ? "0px" : "300px";
-        }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
     <script type='module' src="./main.js"></script>
