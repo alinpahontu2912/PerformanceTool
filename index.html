@@ -40,6 +40,14 @@
                     <button class="btn btn-block btn-primary" type="submit" id="regexSubmit">Filter Flavors</button>
                 </li>
                 <li class="border-top my-3"></li>
+                <li>
+                    <div class="mb-3">
+                        <label for="text" class="form-label">First Commit Hash</label><input type="text" id="firstCommit" class="form-control">
+                        <label for="text" class="form-label">Second Commit Hash</label><input type="text" id="secondCommit" class="form-control">
+                    </div>
+                    <button class="btn btn-block btn-primary" type="submit" id="commitsSubmit">Load commit diff</button>
+                </li>
+                <li class="border-top my-3"></li>
                 <li class="mb-1">
                     <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#dates-collapse" aria-expanded="false">
                         Date Presets
@@ -73,6 +81,7 @@
                     </button>
                     <div class="collapse show" id="legend-collapse">
                         <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small" id="chartLegend">
+                            
                         </ul>
                     </div>
                 </li>

@@ -47,13 +47,13 @@ public partial class Program
             var logUrl = measurementsUrl + data[i].hash + "/" + flavor + gitLogFile;
             foreach (var pair in data[i].minTimes)
             {
-                list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl));
+                list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl, data[i].hash));
             }
             if (data[i].sizes != null)
             {
                 foreach (var pair in data[i].sizes)
                 {
-                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, "bytes"));
+                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, data[i].hash, "bytes"));
                 }
             }
         }

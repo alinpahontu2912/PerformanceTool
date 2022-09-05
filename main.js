@@ -4,7 +4,8 @@ App.main = async function (applicationArguments) {
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
-
+    var firstHash = "";
+    var secondHash = "";
     class TaskData {
         constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxis) {
             this.taskId = taskId;
@@ -93,13 +94,22 @@ App.main = async function (applicationArguments) {
             .on("click", function (_, i) {
                 window.open(i.gitLogUrl, '_blank');
             })
+            .on("dblclick", function (_, i) {
+                if (firstHash === "") {
+                    document.getElementById("firstCommit").value = i.commitHash;
+                    firstHash = i.commitHash;
+                } else if (secondHash === "") {
+                    document.getElementById("secondCommit").value = i.commitHash;
+                    secondHash = i.commitHash;
+                }
+            })
             .attr("fill", color)
             .attr("r", radius)
             .attr("r", radius)
             .attr("cx", function (d) { return testData.x(d.time); })
             .attr("cy", function (d) { return testData.y(+d.minTime) })
             .append("title")
-            .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}`; });
+            .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}` + "\n" + "Hash: " + d.commitHash; });
 
     }
 
@@ -183,6 +193,19 @@ App.main = async function (applicationArguments) {
                 .style("color", ordinal(flavors[i]))
                 .html(flavors[i])
         }
+        let selection = chartParagraph.append("li");
+        selection.append("button")
+            .attr("class", "btn btn-block btn-primary")
+            .attr("type", "submit")
+            .attr("id", "legendSubmit")
+            .html("Select All")
+            .on("click", function () {
+                for (let i = 0; i < flavors.length; i++) {
+                    if (document.getElementById(flavors[i]).checked === false) {
+                        document.getElementById(flavors[i]).click();
+                    }
+                }
+            });
 
     }
 
@@ -212,7 +235,6 @@ App.main = async function (applicationArguments) {
         removeOldData(testData, flavors)
         let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
-        console.log(filteredData);
         let flvs = [...filteredData.keys()]
         for (let i = 0; i < flvs.length; i++) {
             escapedFlavor = flvs[i].replaceAll(regex, '');
