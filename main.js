@@ -4,17 +4,18 @@ App.main = async function (applicationArguments) {
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
-    var firstHash = "";
-    var secondHash = "";
+    const width = screen.width * 0.8 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
     class TaskData {
-        constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxis) {
+        constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxisLeft, yAxisRight) {
             this.taskId = taskId;
             this.legendName = legendName;
             this.allData = allData;
             this.x = x;
             this.y = y;
             this.xAxis = xAxis;
-            this.yAxis = yAxis;
+            this.yAxisLeft = yAxisLeft;
+            this.yAxisRight = yAxisRight;
             this.dataGroup = dataGroup;
             this.data = [];
             this.hiddenData = [];
@@ -91,17 +92,8 @@ App.main = async function (applicationArguments) {
             .enter()
             .append("circle")
             .merge(circleGroup)
-            .on("click", function (_, i) {
+            .on('click', function (_, i) {
                 window.open(i.gitLogUrl, '_blank');
-            })
-            .on("dblclick", function (_, i) {
-                if (firstHash === "") {
-                    document.getElementById("firstCommit").value = i.commitHash;
-                    firstHash = i.commitHash;
-                } else if (secondHash === "") {
-                    document.getElementById("secondCommit").value = i.commitHash;
-                    secondHash = i.commitHash;
-                }
             })
             .attr("fill", color)
             .attr("r", radius)
@@ -227,7 +219,8 @@ App.main = async function (applicationArguments) {
             .tickFormat(d3.timeFormat("%m/%d/%Y")));
 
         testData.y.domain(d3.extent(testData.data, function (d) { return +d.minTime; }));
-        testData.yAxis.transition().duration(1500).call(d3.axisLeft(testData.y));
+        testData.yAxisLeft.transition().duration(1500).call(d3.axisLeft(testData.y));
+        testData.yAxisRight.transition().duration(1500).call(d3.axisRight(testData.y));
 
         d3.selectAll(".xAxis .tick text")
             .attr("transform", "rotate(-15)");
@@ -235,12 +228,57 @@ App.main = async function (applicationArguments) {
         removeOldData(testData, flavors)
         let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
-        let flvs = [...filteredData.keys()]
+        let flvs = [...filteredData.keys()];
         for (let i = 0; i < flvs.length; i++) {
             escapedFlavor = flvs[i].replaceAll(regex, '');
             plotVariable(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), escapedFlavor);
             circlePoints(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), flvs[i], escapedFlavor);
         }
+    }
+
+    function addBrush(testData) {
+        let task = tasksIds[testData.taskId].split(",")[0];
+        let brush = d3.brushX().on("end", brushed).extent([[margin.left, margin.top], [width + margin.right, height + margin.top]]);
+        let brushArea = d3.select("#" + task + testData.taskId).append("g")
+            .attr("class", "brush");
+
+        brushArea.on("dblclick", reset);
+        brushArea.call(brush);
+
+        function reset() {
+            let startDate = document.getElementById('startDate').valueAsDate;
+            let endDate = document.getElementById('endDate').valueAsDate;
+            testData.data = getResultsBetweenDates(testData.allData, startDate, endDate);
+            let availableData = testData.data.filter(function (d) {
+                return testData.availableFlavors.includes(d.flavor);
+            });
+            let hiddenData = testData.data.filter(function (d) {
+                return !testData.availableFlavors.includes(d.flavor);
+            });
+            testData.data = availableData;
+            testData.hiddenData = hiddenData;
+            updateGraph(testData, flavors);
+        }
+
+        function brushed() {
+            let xCoords = d3.brushSelection(this);
+            let dataEnd = xCoords[1] - margin.left;
+            let dataStart = xCoords[0] - margin.left;
+            let brushedData = testData.data.filter(function (d) {
+                return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
+            });
+            if (brushedData.length > 0) {
+                let hiddenData = testData.data.filter(function (d) {
+                    return !brushedData.includes(d);
+                });
+                testData.hiddenData.concat(hiddenData);
+                testData.data = brushedData;
+                updateGraph(testData, flavors);
+                document.getElementById("firstCommit").value = brushedData[0].commitHash;
+                document.getElementById("secondCommit").value = brushedData[brushedData.length - 1].commitHash;
+            }
+        }
+
     }
 
     function addRegexText(domName) {
@@ -265,8 +303,6 @@ App.main = async function (applicationArguments) {
 
     function buildGraph(allData, flavors, taskId) {
 
-        const width = 1000 - margin.left - margin.right;
-        const height = 500 - margin.top - margin.bottom;
         let taskName = tasksIds[taskId];
         let [task, test] = taskName.split(",");
         let data = allData.filter(d => d.taskMeasurementName === taskName);
@@ -274,9 +310,11 @@ App.main = async function (applicationArguments) {
         let dataGroup = collapsible
             .append("div")
             .append("svg")
+            .attr("id", task + taskId)
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
+            .style("z-index", "99999")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
         let x = d3.scaleTime()
@@ -288,18 +326,38 @@ App.main = async function (applicationArguments) {
             .attr("class", "xAxis")
             .attr("transform", "translate(0, " + height + ")");
 
+        /*        let xAxisGrid = d3.axisBottom(x).tickSize(height).tickFormat('');
+                dataGroup.append("g")
+                    .attr("class", "xAxisGrid")
+                    .call(xAxisGrid);*/
+
         let y = d3.scaleLinear()
             .range([height, 0])
             .nice();
 
-        let yAxis = dataGroup
+        let yAxisLeft = dataGroup
             .append("g")
-            .attr("class", "yAxis");
+            .attr("class", "yAxisLeft");
+
+        let yAxisRight = dataGroup
+            .append("g")
+            .attr("class", "yAxisRight")
+            .attr("transform", "translate(" + width + ",0)");
+
         let title = addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "15pt", test, "black");
         let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top * 1.1, "15pt", `Results (${data[0].unit})`, "black", -90);
-        let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxis);
+        let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxisLeft, yAxisRight);
         testData.data = getLastDaysData(testData.allData, 14);
+        addBrush(testData);
         return testData;
+    }
+
+    function loadCommitDiff() {
+        d3.select("#" + "commitsSubmit").on("click", function () {
+            let firstHash = document.getElementById("firstCommit").value;
+            let secondHash = document.getElementById("secondCommit").value;
+            window.open("https://github.com/dotnet/runtime/compare/" + firstHash + "..." + secondHash, '_blank');
+        });
     }
 
     function addPresets(filters, domName, testsData, flavors, callback) {
@@ -474,6 +532,7 @@ App.main = async function (applicationArguments) {
     addLegendContent(testsData, flavors, "chartLegend");
     updateOnDatePicker(testsData, flavors);
     datesPreset(testsData, flavors);
+    loadCommitDiff();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
 
