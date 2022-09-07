@@ -139,7 +139,7 @@ App.main = async function (applicationArguments) {
             .attr("y", yCoord);
     }
 
-    function addLegendContent(testsData, flavors, domName) {
+    function addLegendContent(domName) {
         let chartParagraph = d3.select("#" + domName);
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
@@ -222,10 +222,8 @@ App.main = async function (applicationArguments) {
         testData.yAxisLeft.transition().duration(1500).call(d3.axisLeft(testData.y));
         testData.yAxisRight.transition().duration(1500).call(d3.axisRight(testData.y));
 
-        d3.selectAll(".xAxis .tick text")
-            .attr("transform", "rotate(-15)");
+        removeOldData(testData, flavors);
 
-        removeOldData(testData, flavors)
         let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
         let flvs = [...filteredData.keys()];
@@ -248,16 +246,10 @@ App.main = async function (applicationArguments) {
         function reset() {
             let startDate = document.getElementById('startDate').valueAsDate;
             let endDate = document.getElementById('endDate').valueAsDate;
-            testData.data = getResultsBetweenDates(testData.allData, startDate, endDate);
-            let availableData = testData.data.filter(function (d) {
-                return testData.availableFlavors.includes(d.flavor);
-            });
-            let hiddenData = testData.data.filter(function (d) {
-                return !testData.availableFlavors.includes(d.flavor);
-            });
-            testData.data = availableData;
-            testData.hiddenData = hiddenData;
-            updateGraph(testData, flavors);
+            for (let i = 0; i < numTests; i++) {
+                updateDataOnDates(testsData[i], startDate, endDate);
+                updateGraph(testsData[i], flavors);
+            }
         }
 
         function brushed() {
@@ -268,23 +260,22 @@ App.main = async function (applicationArguments) {
                 return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
             });
             if (brushedData.length > 0) {
-                let hiddenData = testData.data.filter(function (d) {
-                    return !brushedData.includes(d);
-                });
-                testData.hiddenData.concat(hiddenData);
-                testData.data = brushedData;
-                updateGraph(testData, flavors);
-                document.getElementById("firstCommit").value = brushedData[0].commitHash;
-                document.getElementById("secondCommit").value = brushedData[brushedData.length - 1].commitHash;
+                let firstCommit = brushedData[0];
+                let lastCommit = brushedData[brushedData.length - 1];
+                document.getElementById("firstCommit").value = firstCommit.commitHash;
+                document.getElementById("secondCommit").value = lastCommit.commitHash;
+                for (let i = 0; i < numTests; i++) {
+                    updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
+                    updateGraph(testsData[i], flavors);
+                }
             }
         }
-
     }
 
     function addRegexText(domName) {
         d3.select("#" + domName).on("click", function () {
             let regex = document.getElementById("flavorText").value;
-            regexUpdate(testsData, flavors, regex);
+            regexUpdate(regex);
             document.getElementById("flavorText").value = "";
         });
     }
@@ -326,11 +317,6 @@ App.main = async function (applicationArguments) {
             .attr("class", "xAxis")
             .attr("transform", "translate(0, " + height + ")");
 
-        /*        let xAxisGrid = d3.axisBottom(x).tickSize(height).tickFormat('');
-                dataGroup.append("g")
-                    .attr("class", "xAxisGrid")
-                    .call(xAxisGrid);*/
-
         let y = d3.scaleLinear()
             .range([height, 0])
             .nice();
@@ -352,7 +338,7 @@ App.main = async function (applicationArguments) {
         return testData;
     }
 
-    function loadCommitDiff() {
+    function addCommitDiffButton() {
         d3.select("#" + "commitsSubmit").on("click", function () {
             let firstHash = document.getElementById("firstCommit").value;
             let secondHash = document.getElementById("secondCommit").value;
@@ -360,7 +346,7 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function addPresets(filters, domName, testsData, flavors, callback) {
+    function addPresets(filters, domName, callback) {
         let filtersLen = filters.length;
         let dropdownDiv = d3.select("#" + domName);
         for (let i = 0; i < filtersLen; i++) {
@@ -368,7 +354,7 @@ App.main = async function (applicationArguments) {
                 .append("a")
                 .attr("id", filters[i])
                 .html(filters[i])
-                .on("click", () => callback(testsData, flavors, filters[i]));
+                .on("click", () => callback(filters[i]));
         }
     }
 
@@ -384,7 +370,7 @@ App.main = async function (applicationArguments) {
     }
 
 
-    function updateDataByFlavor(testsData, flavors, wantedFlavors) {
+    function updateGraphsByFlavor(wantedFlavors) {
         updateCheckboxes(flavors, wantedFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
@@ -403,27 +389,27 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function chartsPreset(testsData, flavors, filter) {
+    function selectChartsPreset(filter) {
         let open = document.getElementById(filter + "collapsible").open;
         document.getElementById(filter + "collapsible").open = open === true ? false : true;
     }
 
-    function flavorsPreset(testsData, flavors, filter) {
+    function selectFlavorsPreset(filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
-        updateDataByFlavor(testsData, flavors, wantedFlavors);
+        updateGraphsByFlavor(wantedFlavors);
     }
 
-    function regexUpdate(testsData, flavors, filter) {
+    function regexUpdate(filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.match(filter));
         if (wantedFlavors.length !== 0) {
-            updateDataByFlavor(testsData, flavors, wantedFlavors);
+            updateGraphsByFlavor(wantedFlavors);
         } else {
             alert("Invalid Regex");
         }
 
     }
 
-    function datesPreset(testsData, flavors, filter = '') {
+    function selectDatePreset(filter = '') {
         let startDate = new Date();
         let endDate = new Date();
 
@@ -449,7 +435,7 @@ App.main = async function (applicationArguments) {
         }
 
         for (let i = 0; i < numTests; i++) {
-            updateTestDataOnDates(testsData[i], startDate, endDate);
+            updateDataOnDates(testsData[i], startDate, endDate);
             updateGraph(testsData[i], flavors);
         }
 
@@ -457,7 +443,7 @@ App.main = async function (applicationArguments) {
         document.getElementById('endDate').valueAsDate = endDate;
     }
 
-    function updateOnDatePicker(testsData, flavors) {
+    function addDatePickers() {
         let startDate = null;
         let endDate = null;
 
@@ -478,7 +464,7 @@ App.main = async function (applicationArguments) {
                     alert("Choose valid dates!");
                 } else {
                     for (let i = 0; i < numTests; i++) {
-                        updateTestDataOnDates(testsData[i], startDate, endDate);
+                        updateDataOnDates(testsData[i], startDate, endDate);
                         updateGraph(testsData[i], flavors);
                     }
                 }
@@ -486,7 +472,7 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function updateTestDataOnDates(testData, startDate, endDate) {
+    function updateDataOnDates(testData, startDate, endDate) {
         testData.data = getResultsBetweenDates(testData.allData, startDate, endDate);
         testData.hiddenData = testData.data.filter(function (d) {
             return !testData.availableFlavors.includes(d.flavor);
@@ -526,13 +512,13 @@ App.main = async function (applicationArguments) {
         testsData.push(buildGraph(data, flavors, i));
     }
     addRegexText("regexSubmit");
-    addPresets(datePresets, "datesPresets", testsData, flavors, datesPreset);
-    addPresets(graphFilters, "flavorsPresets", testsData, flavors, flavorsPreset);
-    addPresets([...testToTask.keys()].sort(), "chartsPresets", [], [], chartsPreset);
-    addLegendContent(testsData, flavors, "chartLegend");
-    updateOnDatePicker(testsData, flavors);
-    datesPreset(testsData, flavors);
-    loadCommitDiff();
+    addPresets(datePresets, "datesPresets", selectDatePreset);
+    addPresets(graphFilters, "flavorsPresets", selectFlavorsPreset);
+    addPresets([...testToTask.keys()].sort(), "chartsPresets", selectChartsPreset);
+    addLegendContent("chartLegend");
+    addDatePickers();
+    selectDatePreset();
+    addCommitDiffButton();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
 
