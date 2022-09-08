@@ -7,13 +7,15 @@ App.main = async function (applicationArguments) {
     const width = screen.width * 0.8 - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
     class TaskData {
-        constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, yAxisLeft, yAxisRight) {
+        constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, xGrid, yGrid, yAxisLeft, yAxisRight) {
             this.taskId = taskId;
             this.legendName = legendName;
             this.allData = allData;
             this.x = x;
             this.y = y;
             this.xAxis = xAxis;
+            this.xGrid = xGrid;
+            this.yGrid = yGrid;
             this.yAxisLeft = yAxisLeft;
             this.yAxisRight = yAxisRight;
             this.dataGroup = dataGroup;
@@ -65,13 +67,6 @@ App.main = async function (applicationArguments) {
         return keys;
     }
 
-    function getLastDaysData(data, numOfDays) {
-        let timeDif = 1000 * 60 * 60 * 24 * numOfDays;
-        let lastTest = new Date();
-        let result = data.filter(x => x.time >= lastTest - timeDif);
-        return result;
-    }
-
     function getResultsBetweenDates(allData, startDate, endDate) {
         let result = allData.filter(function (d) {
             let date = d.time;
@@ -87,32 +82,40 @@ App.main = async function (applicationArguments) {
         let circleGroup = testData.dataGroup.append("g")
             .attr("class", circleGroupName)
             .selectAll("circle")
+            .attr("pointer-events", "all")
             .data(data);
         circleGroup
             .enter()
             .append("circle")
-            .merge(circleGroup)
-            .on('click', function (_, i) {
-                window.open(i.gitLogUrl, '_blank');
-            })
             .attr("fill", color)
-            .attr("r", radius)
             .attr("r", radius)
             .attr("cx", function (d) { return testData.x(d.time); })
             .attr("cy", function (d) { return testData.y(+d.minTime) })
+            .attr("pointer-events", "all")
+            .on("click", function (_, i) {
+                window.open(i.gitLogUrl, '_blank');
+            })
             .append("title")
-            .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}` + "\n" + "Hash: " + d.commitHash; });
+            .text(function (d) { return "Exact date: " + d.commitTime + "\n" + "Flavor: " + flavor + "\n" + "Result: " + +d.minTime + ` ${data[0].unit}` + "\n" + "Hash: " + d.commitHash; })
+            .merge(circleGroup);
 
     }
 
-    function plotVariable(testData, data, color, escapedFlavor) {
+    function plotVariable(testData, data, color, flavor, escapedFlavor) {
         let className = escapedFlavor + testData.taskId;
-        let lineGroup = testData.dataGroup.append("g")
-            .selectAll("path")
+        let group = testData.dataGroup.append("g");
+        group.append("title").text(flavor);
+        let lineGroup = group.selectAll("path")
             .data([data]);
         lineGroup
             .enter()
             .append("path")
+            .on("mouseover", function () {
+                d3.select(this).attr("stroke-width", 3);
+            })
+            .on("mouseout", function () {
+                d3.select(this).attr("stroke-width", 1);
+            })
             .attr("class", className)
             .merge(lineGroup)
             .transition()
@@ -213,7 +216,6 @@ App.main = async function (applicationArguments) {
     }
 
     function updateGraph(testData, flavors) {
-
         testData.x.domain(d3.extent(testData.data, function (d) { return d.time }));
         testData.xAxis.transition().duration(1500).call(d3.axisBottom(testData.x)
             .tickFormat(d3.timeFormat("%m/%d/%Y")));
@@ -222,6 +224,14 @@ App.main = async function (applicationArguments) {
         testData.yAxisLeft.transition().duration(1500).call(d3.axisLeft(testData.y));
         testData.yAxisRight.transition().duration(1500).call(d3.axisRight(testData.y));
 
+        let xTicks = testData.x.ticks().length;
+        let yTicks = testData.y.ticks().length;
+        let xAxisGrid = d3.axisBottom(testData.x).tickSize(-height).tickFormat('').ticks(xTicks);
+        let yAxisGrid = d3.axisLeft(testData.y).tickSize(-width).tickFormat('').ticks(yTicks);
+
+        testData.xGrid.call(xAxisGrid);
+        testData.yGrid.call(yAxisGrid);
+
         removeOldData(testData, flavors);
 
         let escapedFlavor = "";
@@ -229,46 +239,8 @@ App.main = async function (applicationArguments) {
         let flvs = [...filteredData.keys()];
         for (let i = 0; i < flvs.length; i++) {
             escapedFlavor = flvs[i].replaceAll(regex, '');
-            plotVariable(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), escapedFlavor);
+            plotVariable(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), flvs[i], escapedFlavor);
             circlePoints(testData, filteredData.get(flvs[i]), ordinal(flvs[i]), flvs[i], escapedFlavor);
-        }
-    }
-
-    function addBrush(testData) {
-        let task = tasksIds[testData.taskId].split(",")[0];
-        let brush = d3.brushX().on("end", brushed).extent([[margin.left, margin.top], [width + margin.right, height + margin.top]]);
-        let brushArea = d3.select("#" + task + testData.taskId).append("g")
-            .attr("class", "brush");
-
-        brushArea.on("dblclick", reset);
-        brushArea.call(brush);
-
-        function reset() {
-            let startDate = document.getElementById('startDate').valueAsDate;
-            let endDate = document.getElementById('endDate').valueAsDate;
-            for (let i = 0; i < numTests; i++) {
-                updateDataOnDates(testsData[i], startDate, endDate);
-                updateGraph(testsData[i], flavors);
-            }
-        }
-
-        function brushed() {
-            let xCoords = d3.brushSelection(this);
-            let dataEnd = xCoords[1] - margin.left;
-            let dataStart = xCoords[0] - margin.left;
-            let brushedData = testData.data.filter(function (d) {
-                return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
-            });
-            if (brushedData.length > 0) {
-                let firstCommit = brushedData[0];
-                let lastCommit = brushedData[brushedData.length - 1];
-                document.getElementById("firstCommit").value = firstCommit.commitHash;
-                document.getElementById("secondCommit").value = lastCommit.commitHash;
-                for (let i = 0; i < numTests; i++) {
-                    updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
-                    updateGraph(testsData[i], flavors);
-                }
-            }
         }
     }
 
@@ -292,6 +264,27 @@ App.main = async function (applicationArguments) {
         }
     }
 
+    function brushed(testData) {
+        let xCoords = d3.brushSelection(testData.dataGroup.select(".brush").node());
+        let dataEnd = xCoords[1];
+        let dataStart = xCoords[0];
+        let brushedData = testData.data.filter(function (d) {
+            return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
+        });
+        if (brushedData.length > 0) {
+            let firstCommit = brushedData[0];
+            let lastCommit = brushedData[brushedData.length - 1];
+            document.getElementById("firstCommit").value = firstCommit.commitHash;
+            document.getElementById("secondCommit").value = lastCommit.commitHash;
+            document.getElementById("startDate").valueAsDate = firstCommit.time;
+            document.getElementById("endDate").valueAsDate = lastCommit.time;
+            for (let i = 0; i < numTests; i++) {
+                updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
+                updateGraph(testsData[i], flavors);
+            }
+        }
+    }
+
     function buildGraph(allData, flavors, taskId) {
 
         let taskName = tasksIds[taskId];
@@ -305,7 +298,6 @@ App.main = async function (applicationArguments) {
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
-            .style("z-index", "99999")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
         let x = d3.scaleTime()
@@ -317,9 +309,22 @@ App.main = async function (applicationArguments) {
             .attr("class", "xAxis")
             .attr("transform", "translate(0, " + height + ")");
 
+        let xGrid = dataGroup
+            .append("g")
+            .attr("class", "xGrid")
+            .style("stroke-dasharray", "5")
+            .style("opacity", "0.3")
+            .attr("transform", "translate(0, " + height + ")");
+
         let y = d3.scaleLinear()
             .range([height, 0])
             .nice();
+
+        let yGrid = dataGroup
+            .append("g")
+            .attr("class", "yGrid")
+            .style("stroke-dasharray", "5")
+            .style("opacity", "0.3");
 
         let yAxisLeft = dataGroup
             .append("g")
@@ -332,14 +337,14 @@ App.main = async function (applicationArguments) {
 
         let title = addSimpleText(dataGroup, width / 2, 10 - (margin.top / 2), "15pt", test, "black");
         let yLegendName = addSimpleText(dataGroup, - margin.left, - margin.top * 1.1, "15pt", `Results (${data[0].unit})`, "black", -90);
-        let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, yAxisLeft, yAxisRight);
-        testData.data = getLastDaysData(testData.allData, 14);
-        addBrush(testData);
+        let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, xGrid, yGrid, yAxisLeft, yAxisRight);
+        let brush = d3.brushX().on("end", () => brushed(testData)).extent([[0, 0], [width, height]]);
+        dataGroup.append("g").attr("class", "brush").call(brush);
         return testData;
     }
 
-    function addCommitDiffButton() {
-        d3.select("#" + "commitsSubmit").on("click", function () {
+    function addCommitDiffButton(domName) {
+        d3.select("#" + domName).on("click", function () {
             let firstHash = document.getElementById("firstCommit").value;
             let secondHash = document.getElementById("secondCommit").value;
             window.open("https://github.com/dotnet/runtime/compare/" + firstHash + "..." + secondHash, '_blank');
@@ -368,7 +373,6 @@ App.main = async function (applicationArguments) {
             }
         }
     }
-
 
     function updateGraphsByFlavor(wantedFlavors) {
         updateCheckboxes(flavors, wantedFlavors);
@@ -406,7 +410,6 @@ App.main = async function (applicationArguments) {
         } else {
             alert("Invalid Regex");
         }
-
     }
 
     function selectDatePreset(filter = '') {
@@ -439,27 +442,30 @@ App.main = async function (applicationArguments) {
             updateGraph(testsData[i], flavors);
         }
 
-        document.getElementById('startDate').valueAsDate = startDate;
-        document.getElementById('endDate').valueAsDate = endDate;
+        document.getElementById("startDate").valueAsDate = startDate;
+        document.getElementById("endDate").valueAsDate = endDate;
     }
 
-    function addDatePickers() {
+    function addDatePickers(firstDatePicker, secondDatePicker, submitButton) {
         let startDate = null;
         let endDate = null;
 
-        d3.select("#startDate").on("change", function () {
+        d3.select("#" + firstDatePicker).on("change", function () {
             startDate = new Date(this.value);
         });
 
-        d3.select("#endDate").on("change", function () {
+        d3.select("#" + secondDatePicker).on("change", function () {
             endDate = new Date(this.value);
         });
 
-        d3.select("#submit").on("click", function () {
+        d3.select("#" + submitButton).on("click", function () {
             if (startDate === null) {
-                alert("Select start date!");
+                startDate = document.getElementById("startDate").valueAsDate;
             }
-            else if (startDate !== null && endDate !== null) {
+            if (endDate === null) {
+                endDate = document.getElementById("endDate").valueAsDate;
+            }
+            if (startDate !== null && endDate !== null) {
                 if (startDate.getTime() >= endDate.getTime()) {
                     alert("Choose valid dates!");
                 } else {
@@ -516,12 +522,11 @@ App.main = async function (applicationArguments) {
     addPresets(graphFilters, "flavorsPresets", selectFlavorsPreset);
     addPresets([...testToTask.keys()].sort(), "chartsPresets", selectChartsPreset);
     addLegendContent("chartLegend");
-    addDatePickers();
+    addDatePickers("startDate", "endDate", "submit");
     selectDatePreset();
-    addCommitDiffButton();
+    addCommitDiffButton("commitsSubmit");
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
-
 
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
