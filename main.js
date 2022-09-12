@@ -165,7 +165,7 @@ App.main = async function (applicationArguments) {
                                 return !flavorResults.includes(d);
                             });
                             curTest.availableFlavors.splice(curTest.availableFlavors.indexOf(lineClass), 1);
-                            updateGraph(curTest, flavors);
+                            updateGraph(curTest);
                         }
                     } else {
                         for (let i = 0; i < numTests; i++) {
@@ -178,7 +178,7 @@ App.main = async function (applicationArguments) {
                             curTest.hiddenData = curTest.hiddenData.filter(function (d) {
                                 return !flavorResults.includes(d);
                             });
-                            updateGraph(curTest, flavors);
+                            updateGraph(curTest);
                         }
                     }
                 });
@@ -201,21 +201,20 @@ App.main = async function (applicationArguments) {
                     }
                 }
             });
-
     }
 
-    function removeOldData(testData, flavors) {
+    function removeOldData(testData) {
         let flavorsLen = flavors.length;
         for (let i = 0; i < flavorsLen; i++) {
             let escapedFlavor = flavors[i].replaceAll(regex, '');
-            let className = escapedFlavor + testData.taskId;
-            d3.select("." + className).remove();
+            let lineGroupName = escapedFlavor + testData.taskId;
             let circleGroupName = escapedFlavor + "circleData" + testData.taskId;
+            d3.select("." + lineGroupName).remove();
             d3.select("." + circleGroupName).remove();
         }
     }
 
-    function updateGraph(testData, flavors) {
+    function updateGraph(testData) {
         testData.x.domain(d3.extent(testData.data, function (d) { return d.time }));
         testData.xAxis.transition().duration(1500).call(d3.axisBottom(testData.x)
             .tickFormat(d3.timeFormat("%m/%d/%Y")));
@@ -232,7 +231,7 @@ App.main = async function (applicationArguments) {
         testData.xGrid.call(xAxisGrid);
         testData.yGrid.call(yAxisGrid);
 
-        removeOldData(testData, flavors);
+        removeOldData(testData);
 
         let escapedFlavor = "";
         let filteredData = mapByFlavor(testData.data);
@@ -280,7 +279,7 @@ App.main = async function (applicationArguments) {
             document.getElementById("endDate").valueAsDate = lastCommit.time;
             for (let i = 0; i < numTests; i++) {
                 updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
-                updateGraph(testsData[i], flavors);
+                updateGraph(testsData[i]);
             }
         }
     }
@@ -389,7 +388,7 @@ App.main = async function (applicationArguments) {
             });
             curTest.availableFlavors.length = 0;
             curTest.availableFlavors = Array.from(wantedFlavors);
-            updateGraph(curTest, flavors);
+            updateGraph(curTest);
         }
     }
 
@@ -439,7 +438,7 @@ App.main = async function (applicationArguments) {
 
         for (let i = 0; i < numTests; i++) {
             updateDataOnDates(testsData[i], startDate, endDate);
-            updateGraph(testsData[i], flavors);
+            updateGraph(testsData[i]);
         }
 
         document.getElementById("startDate").valueAsDate = startDate;
@@ -471,7 +470,7 @@ App.main = async function (applicationArguments) {
                 } else {
                     for (let i = 0; i < numTests; i++) {
                         updateDataOnDates(testsData[i], startDate, endDate);
-                        updateGraph(testsData[i], flavors);
+                        updateGraph(testsData[i]);
                     }
                 }
             }
@@ -497,8 +496,8 @@ App.main = async function (applicationArguments) {
         data[i].time = new Date(data[i].commitTime);
     }
 
-    let flavors = getDataProperties(data, 'flavor');
-    let testNames = getDataProperties(data, 'taskMeasurementName');
+    let flavors = getDataProperties(data, "flavor");
+    let testNames = getDataProperties(data, "taskMeasurementName");
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
     var firstDate = getFirstTestDate(data);
