@@ -1,6 +1,8 @@
 ﻿import { App } from './app-support.js'
 
 App.main = async function (applicationArguments) {
+    /*    const TurndownService = require('turndown');
+        const turndownService = new TurndownService();*/
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
@@ -52,10 +54,10 @@ App.main = async function (applicationArguments) {
         return keys;
     }
 
-    function mapByFlavor(data) {
+    function mapByField(data, property) {
         let obj = data.reduce((map, e) => ({
             ...map,
-            [e.flavor]: [...(map[e.flavor] ?? []), e]
+            [e[property]]: [...(map[e[property]] ?? []), e]
         }), {});
         return new Map(Object.entries(obj));
     }
@@ -234,7 +236,7 @@ App.main = async function (applicationArguments) {
         removeOldData(testData);
 
         let escapedFlavor = "";
-        let filteredData = mapByFlavor(testData.data);
+        let filteredData = mapByField(testData.data, "flavor");
         let flvs = [...filteredData.keys()];
         for (let i = 0; i < flvs.length; i++) {
             escapedFlavor = flvs[i].replaceAll(regex, '');
@@ -282,6 +284,7 @@ App.main = async function (applicationArguments) {
                 updateGraph(testsData[i]);
             }
         }
+        testData.dataGroup.select(".brush").call();
     }
 
     function buildGraph(allData, flavors, taskId) {
@@ -487,6 +490,61 @@ App.main = async function (applicationArguments) {
         });
     }
 
+    function createTable(modalName, tableButton) {
+        d3.select("#" + tableButton).on("click", function () {
+            d3.select(".table").remove();
+            let table = d3.select("#" + modalName).append("table")
+                .attr("id", "table")
+                .attr("class", "table table-hover");
+            for (let i = 0; i < numTests; i++) {
+                let commits = [...mapByField(testsData[i].data, "commitHash").keys()];
+                let results = mapByField(testsData[i].data, "flavor");
+                let commitsLen = commits.length;
+                let tableHead = table.append("thead")
+                    .attr("class", "thead-dark")
+                    .append("tr");
+                tableHead.append("th")
+                    .attr("scope", "col")
+                    .html(tasksIds[i] + ` (${commits[0]})`);
+                for (let j = 1; j < commitsLen; j++) {
+                    tableHead.append("th")
+                        .attr("scope", "col")
+                        .html(commits[j]);
+                }
+                let flavorsLen = testsData[i].availableFlavors.length;
+                let tableBody = table.append("tbody");
+                for (let j = 0; j < flavorsLen; j++) {
+                    let flavor = testsData[i].availableFlavors[j];
+                    let row = tableBody.append("tr");
+                    row.append("th")
+                        .attr("scope", "row")
+                        .html(flavor);
+                    let rowData = results.get(flavor);
+                    let resultsLen = rowData.length;
+                    for (let k = 1; k < commitsLen; k++) {
+                        let filterFlavor = rowData.find(function (d) {
+                            return d.commitHash === commits[k];
+                        });
+                        if (filterFlavor !== undefined) {
+                            row.append("td")
+                                .html(filterFlavor.minTime);
+                        } else {
+                            row.append("td")
+                                .html("N/A");
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function getMarkDownFile(markdownButton) {
+        /*        d3.select("#" + markdownButton).on("click", function () {
+                    let markdown = turndownService.turndown(document.getElementById("table"));
+                    console.log(markdown);
+                });*/
+    }
+
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
@@ -524,6 +582,8 @@ App.main = async function (applicationArguments) {
     addDatePickers("startDate", "endDate", "submit");
     selectDatePreset();
     addCommitDiffButton("commitsSubmit");
+    getMarkDownFile("markDownButton");
+    createTable("modalBody", "tableButton");
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
 
