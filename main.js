@@ -1,8 +1,6 @@
 ﻿import { App } from './app-support.js'
 
 App.main = async function (applicationArguments) {
-    /*    const TurndownService = require('turndown');
-        const turndownService = new TurndownService();*/
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
@@ -289,7 +287,7 @@ App.main = async function (applicationArguments) {
 
     function buildGraph(allData, flavors, taskId) {
 
-        let taskName = tasksIds[taskId];
+        let taskName = tasksIds.get(taskId);
         let [task, test] = taskName.split(",");
         let data = allData.filter(d => d.taskMeasurementName === taskName);
         let collapsible = d3.select("#" + task + "collapsible");
@@ -495,7 +493,7 @@ App.main = async function (applicationArguments) {
             d3.select(".table").remove();
             let table = d3.select("#" + modalName).append("table")
                 .attr("id", "table")
-                .attr("class", "table table-hover");
+                .attr("class", "table table-hover table-bordered");
             for (let i = 0; i < numTests; i++) {
                 let commits = [...mapByField(testsData[i].data, "commitHash").keys()];
                 let results = mapByField(testsData[i].data, "flavor");
@@ -505,7 +503,7 @@ App.main = async function (applicationArguments) {
                     .append("tr");
                 tableHead.append("th")
                     .attr("scope", "col")
-                    .html(tasksIds[i] + ` (${commits[0]})`);
+                    .html(tasksIds.get(i) + ` (${commits[0]})`);
                 for (let j = 1; j < commitsLen; j++) {
                     tableHead.append("th")
                         .attr("scope", "col")
@@ -520,14 +518,15 @@ App.main = async function (applicationArguments) {
                         .attr("scope", "row")
                         .html(flavor);
                     let rowData = results.get(flavor);
-                    let resultsLen = rowData.length;
                     for (let k = 1; k < commitsLen; k++) {
-                        let filterFlavor = rowData.find(function (d) {
+                        let wantedTest = rowData.find(function (d) {
                             return d.commitHash === commits[k];
                         });
-                        if (filterFlavor !== undefined) {
+                        if (wantedTest !== undefined || wantedTest.percentage !== Infinity) {
                             row.append("td")
-                                .html(filterFlavor.minTime);
+                                .attr("title", `Test Result:${wantedTest.minTime}`)
+                                .attr("class", wantedTest.percentage >= 0 ? "bg-success" : "bg-danger")
+                                .html(`${wantedTest.percentage} % `);
                         } else {
                             row.append("td")
                                 .html("N/A");
@@ -538,11 +537,21 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function getMarkDownFile(markdownButton) {
-        /*        d3.select("#" + markdownButton).on("click", function () {
-                    let markdown = turndownService.turndown(document.getElementById("table"));
-                    console.log(markdown);
-                });*/
+    function addEvolutionPercentages(data, flavors) {
+        let tests = mapByField(data, "taskMeasurementName");
+        for (let i = 0; i < numTests; i++) {
+            let task = tests.get(tasksIds.get(i));
+            let flavorTests = mapByField(task, "flavor");
+            for (let j = 0; j < flavors.length; j++) {
+                let curTest = flavorTests.get(flavors[j]);
+                console.log(curTest);
+                let curTestLength = curTest.length;
+                curTest[0].percentge = 0;
+                for (let k = 1; k < curTestLength; k++) {
+                    curTest[k].percentage = (curTest[k - 1].minTime - curTest[k].minTime) / curTest[k - 1].minTime * 100;
+                }
+            }
+        }
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
@@ -553,7 +562,6 @@ App.main = async function (applicationArguments) {
     for (let i = 0; i < dataLen; i++) {
         data[i].time = new Date(data[i].commitTime);
     }
-
     let flavors = getDataProperties(data, "flavor");
     let testNames = getDataProperties(data, "taskMeasurementName");
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
@@ -563,8 +571,10 @@ App.main = async function (applicationArguments) {
     var tasksIds = new Map();
     const testToTask = mapTestsToTasks(testNames);
     testNames.map(function (d, i) {
-        tasksIds[i] = d;
+        tasksIds.set(i, d);
     });
+    addEvolutionPercentages(data, flavors);
+    console.log(data);
     let colors = d3.schemeCategory10;
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
@@ -582,7 +592,7 @@ App.main = async function (applicationArguments) {
     addDatePickers("startDate", "endDate", "submit");
     selectDatePreset();
     addCommitDiffButton("commitsSubmit");
-    getMarkDownFile("markDownButton");
+
     createTable("modalBody", "tableButton");
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';

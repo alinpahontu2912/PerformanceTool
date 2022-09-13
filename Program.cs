@@ -12,7 +12,6 @@ using WasmBenchmarkResults;
 Console.WriteLine("Hello, Browser!");
 public partial class Program
 {
-    readonly static string measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     readonly static string zipFileName = "index.zip";
     readonly static string gitLogFile = "/git-log.txt";
     readonly static string fileName = "index.json";
