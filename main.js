@@ -1,6 +1,17 @@
-﻿import { App } from './app-support.js'
+﻿import { dotnet } from './dotnet.js'
 
-App.main = async function (applicationArguments) {
+async function mainJS() {
+    const is_browser = typeof window != "undefined";
+    if (!is_browser) throw new Error(`Expected to be running in a browser`);
+
+    const { setModuleImports, getAssemblyExports, getConfig, runMainAndExit } = await dotnet
+        .withDiagnosticTracing(false)
+        .withApplicationArgumentsFromQuery()
+        .create();
+
+    const config = getConfig();
+    const exports = await getAssemblyExports(config.mainAssemblyName);
+
     const roundAccurately = (number, decimalPlaces) => Number(Math.round(number + "e" + decimalPlaces) + "e-" + decimalPlaces);
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
@@ -646,7 +657,6 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
     let data = JSON.parse(value);
@@ -690,5 +700,8 @@ App.main = async function (applicationArguments) {
     });
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
-    await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
+
+    await runMainAndExit(config.mainAssemblyName, []);
 }
+
+await mainJS();
