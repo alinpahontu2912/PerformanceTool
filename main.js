@@ -1,6 +1,7 @@
 ﻿import { App } from './app-support.js'
 
 App.main = async function (applicationArguments) {
+    const roundAccurately = (number, decimalPlaces) => Number(Math.round(number + "e" + decimalPlaces) + "e-" + decimalPlaces);
     const regex = /[^a-zA-Z]/gi;
     const measurementsUrl = "https://raw.githubusercontent.com/radekdoulik/WasmPerformanceMeasurements/main/measurements/";
     const margin = { top: 60, right: 120, bottom: 80, left: 120 };
@@ -19,6 +20,7 @@ App.main = async function (applicationArguments) {
             this.yAxisLeft = yAxisLeft;
             this.yAxisRight = yAxisRight;
             this.dataGroup = dataGroup;
+            this.brush = null;
             this.data = [];
             this.hiddenData = [];
             this.availableFlavors = flavors;
@@ -77,7 +79,7 @@ App.main = async function (applicationArguments) {
     }
 
     function circlePoints(testData, data, color, flavor, escapedFlavor) {
-        let radius = 3;
+        let radius = 4;
         let circleGroupName = escapedFlavor + "circleData" + testData.taskId;
         let circleGroup = testData.dataGroup.append("g")
             .attr("class", circleGroupName)
@@ -111,10 +113,10 @@ App.main = async function (applicationArguments) {
             .enter()
             .append("path")
             .on("mouseover", function () {
-                d3.select(this).attr("stroke-width", 3);
+                d3.select(this).attr("stroke-width", 5);
             })
             .on("mouseout", function () {
-                d3.select(this).attr("stroke-width", 1);
+                d3.select(this).attr("stroke-width", 2);
             })
             .attr("class", className)
             .merge(lineGroup)
@@ -122,7 +124,7 @@ App.main = async function (applicationArguments) {
             .duration(1500)
             .attr("fill", "none")
             .attr("stroke", color)
-            .attr("stroke-width", 1)
+            .attr("stroke-width", 2)
             .attr("d", d3.line().curve(d3.curveMonotoneX)
                 .x(function (d) { return testData.x(d.time); })
                 .y(function (d) { return testData.y(+d.minTime); })
@@ -186,7 +188,7 @@ App.main = async function (applicationArguments) {
                 .attr("class", "form-check-label")
                 .attr("for", lineClass)
                 .style("color", ordinal(flavors[i]))
-                .html(flavors[i])
+                .html(flavors[i]);
         }
         let selection = chartParagraph.append("li");
         selection.append("button")
@@ -265,24 +267,26 @@ App.main = async function (applicationArguments) {
 
     function brushed(testData) {
         let xCoords = d3.brushSelection(testData.dataGroup.select(".brush").node());
-        let dataEnd = xCoords[1];
-        let dataStart = xCoords[0];
-        let brushedData = testData.data.filter(function (d) {
-            return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
-        });
-        if (brushedData.length > 0) {
-            let firstCommit = brushedData[0];
-            let lastCommit = brushedData[brushedData.length - 1];
-            document.getElementById("firstCommit").value = firstCommit.commitHash;
-            document.getElementById("secondCommit").value = lastCommit.commitHash;
-            document.getElementById("startDate").valueAsDate = firstCommit.time;
-            document.getElementById("endDate").valueAsDate = lastCommit.time;
-            for (let i = 0; i < numTests; i++) {
-                updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
-                updateGraph(testsData[i]);
+        if (xCoords !== null) {
+            let dataEnd = xCoords[1];
+            let dataStart = xCoords[0];
+            let brushedData = testData.data.filter(function (d) {
+                return testData.x(d.time) >= dataStart && testData.x(d.time) <= dataEnd;
+            });
+            if (brushedData.length > 0) {
+                let firstCommit = brushedData[0];
+                let lastCommit = brushedData[brushedData.length - 1];
+                document.getElementById("firstCommit").value = firstCommit.commitHash;
+                document.getElementById("secondCommit").value = lastCommit.commitHash;
+                document.getElementById("startDate").valueAsDate = firstCommit.time;
+                document.getElementById("endDate").valueAsDate = lastCommit.time;
+                for (let i = 0; i < numTests; i++) {
+                    updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
+                    updateGraph(testsData[i]);
+                }
             }
+            testData.dataGroup.select(".brush").call(testData.brush.move, null);
         }
-        testData.dataGroup.select(".brush").call();
     }
 
     function buildGraph(allData, flavors, taskId) {
@@ -340,6 +344,7 @@ App.main = async function (applicationArguments) {
         let testData = new TaskData(taskId, yLegendName, dataGroup, data, Array.from(flavors), x, y, xAxis, xGrid, yGrid, yAxisLeft, yAxisRight);
         let brush = d3.brushX().on("end", () => brushed(testData)).extent([[0, 0], [width, height]]);
         dataGroup.append("g").attr("class", "brush").call(brush);
+        testData.brush = brush;
         return testData;
     }
 
@@ -488,33 +493,39 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function createTable(modalName, tableButton) {
+    function createTable(modalName, tableButton, taskNames) {
+
         d3.select("#" + tableButton).on("click", function () {
             d3.select(".table").remove();
             let table = d3.select("#" + modalName).append("table")
                 .attr("id", "table")
                 .attr("class", "table table-hover table-bordered");
-            for (let i = 0; i < numTests; i++) {
-                let commits = [...mapByField(testsData[i].data, "commitHash").keys()];
-                let results = mapByField(testsData[i].data, "flavor");
+            let wantedData = getWantedData(taskNames);
+            let testsLen = wantedData.length;
+            for (let i = 0; i < testsLen; i++) {
+                let commits = [...mapByField(wantedData[i].data, "commitHash").keys()];
+                let results = mapByField(wantedData[i].data, "flavor");
                 let commitsLen = commits.length;
                 let tableHead = table.append("thead")
-                    .attr("class", "thead-dark")
+                    .attr("class", "thead-dark text-center")
                     .append("tr");
                 tableHead.append("th")
                     .attr("scope", "col")
-                    .html(tasksIds.get(i) + ` (${commits[0]})`);
+                    .attr("class", "text-center")
+                    .html(tasksIds.get(wantedData[i].taskId) + ` (${commits[0].substring(0, 7)})`);
                 for (let j = 1; j < commitsLen; j++) {
                     tableHead.append("th")
                         .attr("scope", "col")
-                        .html(commits[j]);
+                        .attr("class", "text-center")
+                        .html(commits[j].substring(0, 7));
                 }
-                let flavorsLen = testsData[i].availableFlavors.length;
+                let flavorsLen = wantedData[i].availableFlavors.length;
                 let tableBody = table.append("tbody");
                 for (let j = 0; j < flavorsLen; j++) {
-                    let flavor = testsData[i].availableFlavors[j];
+                    let flavor = wantedData[i].availableFlavors[j];
                     let row = tableBody.append("tr");
                     row.append("th")
+                        .attr("class", "text-center")
                         .attr("scope", "row")
                         .html(flavor);
                     let rowData = results.get(flavor);
@@ -522,11 +533,12 @@ App.main = async function (applicationArguments) {
                         let wantedTest = rowData.find(function (d) {
                             return d.commitHash === commits[k];
                         });
-                        if (wantedTest !== undefined || wantedTest.percentage !== Infinity) {
+                        if (wantedTest !== undefined) {
                             row.append("td")
-                                .attr("title", `Test Result:${wantedTest.minTime}`)
-                                .attr("class", wantedTest.percentage >= 0 ? "bg-success" : "bg-danger")
-                                .html(`${wantedTest.percentage} % `);
+                                .attr("class", "text-center")
+                                .style("background-color", wantedTest.percentage < 0 ? greenShade((-1) * wantedTest.percentage) : redShade(wantedTest.percentage))
+                                .attr("title", `Test Result: ${wantedTest.minTime}`)
+                                .html(`${roundAccurately(wantedTest.percentage, 3)} % `);
                         } else {
                             row.append("td")
                                 .html("N/A");
@@ -537,18 +549,98 @@ App.main = async function (applicationArguments) {
         });
     }
 
-    function addEvolutionPercentages(data, flavors) {
+    function getWantedData(taskNames) {
+        let tasksLen = taskNames.length;
+        let neededData = [];
+        for (let i = 0; i < tasksLen; i++) {
+            let isOpen = document.getElementById(taskNames[i] + "collapsible").open;
+            if (isOpen === true) {
+                let wantedTests = testsData.filter(function (d) {
+                    return tasksIds.get(d.taskId).includes(taskNames[i]);
+                });
+                neededData = neededData.concat(wantedTests);
+            }
+        }
+        return neededData;
+    }
+
+    function download(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+
+    function createMarkdown(taskNames) {
+        let wantedData = getWantedData(taskNames);
+        let markDown = [];
+        let testsLen = wantedData.length;
+        if (testsLen > 0) {
+            let availableFlavors = wantedData[0].availableFlavors;
+            let availableFlavorsLen = availableFlavors.length;
+            for (let i = 0; i < testsLen; i++) {
+                let commits = [...mapByField(wantedData[i].data, "commitHash").keys()];
+                let results = mapByField(wantedData[i].data, "flavor");
+                let commitsLen = commits.length;
+                markDown.push("|");
+                markDown.push(tasksIds.get(wantedData[i].taskId));
+                markDown.push(`(${commits[0].substring(0, 7)})`);
+                markDown.push("|");
+                for (let j = 1; j < commitsLen; j++) {
+                    markDown.push(commits[j].substring(0, 7));
+                    markDown.push("|");
+                }
+                markDown.push('\n');
+                for (let j = 0; j < commitsLen; j++) {
+                    markDown.push("|-:");
+                }
+                markDown.push("|");
+                markDown.push('\n');
+                for (let j = 0; j < availableFlavorsLen; j++) {
+                    markDown.push("|");
+                    markDown.push(availableFlavors[j]);
+                    markDown.push("|");
+                    let rowData = results.get(availableFlavors[j]);
+                    for (let k = 1; k < commitsLen; k++) {
+                        let wantedTest = rowData.find(function (d) {
+                            return d.commitHash === commits[k];
+                        });
+                        if (wantedTest !== undefined) {
+                            markDown.push(roundAccurately(wantedTest.percentage, 3).toString() + "%");
+                        } else {
+                            markDown.push("N/A");
+                        }
+                        markDown.push("|");
+                    }
+                    markDown.push('\n');
+                }
+                markDown.push('\n');
+            }
+            let firstCommit = wantedData[0].data[0].commitHash.substring(0, 7);
+            let endCommit = wantedData[testsLen - 1].data[wantedData[testsLen - 1].data.length - 1].commitHash.substring(0, 7);
+            let filename = firstCommit.substring(0, 7) + "..." + endCommit.substring(0, 7) + ".md";
+            return [filename, markDown.join('')];
+        } else {
+            alert("No data selected");
+        }
+    }
+
+    function processData(data, flavors) {
         let tests = mapByField(data, "taskMeasurementName");
         for (let i = 0; i < numTests; i++) {
             let task = tests.get(tasksIds.get(i));
             let flavorTests = mapByField(task, "flavor");
             for (let j = 0; j < flavors.length; j++) {
                 let curTest = flavorTests.get(flavors[j]);
-                console.log(curTest);
                 let curTestLength = curTest.length;
                 curTest[0].percentge = 0;
+                curTest[0].time = new Date(curTest[0].commitTime);
                 for (let k = 1; k < curTestLength; k++) {
-                    curTest[k].percentage = (curTest[k - 1].minTime - curTest[k].minTime) / curTest[k - 1].minTime * 100;
+                    curTest[k].time = new Date(curTest[k].commitTime);
+                    curTest[k].percentage = (-1) * (curTest[k - 1].minTime - curTest[k].minTime) / curTest[k - 1].minTime * 100;
                 }
             }
         }
@@ -558,23 +650,22 @@ App.main = async function (applicationArguments) {
     const promise = exports.Program.loadData(measurementsUrl);
     var value = await promise;
     let data = JSON.parse(value);
-    let dataLen = data.length;
-    for (let i = 0; i < dataLen; i++) {
-        data[i].time = new Date(data[i].commitTime);
-    }
     let flavors = getDataProperties(data, "flavor");
     let testNames = getDataProperties(data, "taskMeasurementName");
     let datePresets = ["last week", "last 14 days", "last month", "last 3 months", "whole history"];
     let graphFilters = getContentFromFlavor(flavors);
-    var firstDate = getFirstTestDate(data);
     var numTests = testNames.length;
     var tasksIds = new Map();
     const testToTask = mapTestsToTasks(testNames);
     testNames.map(function (d, i) {
         tasksIds.set(i, d);
     });
-    addEvolutionPercentages(data, flavors);
-    console.log(data);
+    var greenShade = d3.scaleLinear().domain([0, 100])
+        .range(["white", "darkgreen"]);
+    var redShade = d3.scaleLinear().domain([0, 100])
+        .range(["white", "darkred"]);
+    processData(data, flavors);
+    var firstDate = getFirstTestDate(data);
     let colors = d3.schemeCategory10;
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
@@ -592,10 +683,12 @@ App.main = async function (applicationArguments) {
     addDatePickers("startDate", "endDate", "submit");
     selectDatePreset();
     addCommitDiffButton("commitsSubmit");
-
-    createTable("modalBody", "tableButton");
+    createTable("modalBody", "tableButton", [...testToTask.keys()].sort());
+    document.getElementById("markDownButton").addEventListener("click", function () {
+        let [filename, text] = createMarkdown([...testToTask.keys()].sort());
+        download(filename, text);
+    });
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
-
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }

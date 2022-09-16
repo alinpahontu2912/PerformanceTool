@@ -90,7 +90,7 @@
             </ul>
         </div>
         <div class="b-example-divider" style="height: auto !important"></div>
-        <div style="width:85%; overflow-x: hidden; overflow-y: auto; text-align: justify; max-height: auto !important" id="charts" class="p-3">
+        <div style="overflow-x: auto; overflow-y: auto; text-align: justify; max-height: auto !important; width: 85%" id="charts" class="p-3">
             <div class="d-flex">
                 <div class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
@@ -100,7 +100,7 @@
                 <a class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom flex-fill">
                     <span class="fs-5 fw-semibold"> Tasks List</span>
                 </a>
-                <button type="button" class="btn btn-block btn-primary" id="tableButton" data-toggle="modal" data-target="#exampleModalLong">
+                <button type="button" class="btn btn-block btn-primary float-end" id="tableButton" data-toggle="modal" data-target="#exampleModalLong" style="position: absolute; top: 10px; right: 10px;">
                     Comparisons Table
                 </button>
             </div>
@@ -115,10 +115,11 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body" id="modalBody">
+                    <div class="modal-body" id="modalBody" style="overflow-y: auto; overflow-x: auto; ">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" id="markDownButton" data-dismiss="modal">Turn to MarkDown file</button>
+                        <button type="button" class="btn btn-secondary" id="markDownButton">Turn to MarkDown file</button>
+
                     </div>
                 </div>
             </div>
