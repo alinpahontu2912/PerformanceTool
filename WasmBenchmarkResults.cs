@@ -34,9 +34,10 @@ namespace WasmBenchmarkResults
         public string flavor;
         public string gitLogUrl;
         public string commitHash;
+        public double percentage;
         public string unit;
 
-        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair, string gitLogUrl, string hash, string unit = "ms")
+        public GraphPointData(string commitTime, string flavor, KeyValuePair<string, double> pair, string gitLogUrl, string hash, string unit = "ms", double percentage = 0)
         {
             this.commitTime = commitTime;
             taskMeasurementName = pair.Key;
@@ -45,6 +46,28 @@ namespace WasmBenchmarkResults
             this.gitLogUrl = gitLogUrl;
             commitHash = hash;
             this.unit = unit;
+            this.percentage = percentage;
         }
+
+        public override string ToString()
+        {
+            return this.commitTime + " " + this.flavor + " " + this.taskMeasurementName;
+        }
+
+    }
+
+    public class NeededData
+    {
+        public List<GraphPointData> graphPoints;
+        public List<string> flavors;
+        public List<string> taskNames;
+
+        public NeededData(List<GraphPointData> graphPoints, List<string> flavors, List<string> taskNames)
+        {
+            this.graphPoints = graphPoints;
+            this.flavors = flavors;
+            this.taskNames = taskNames;
+        }
+
     }
 }

@@ -7,7 +7,9 @@ using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 using WasmBenchmarkResults;
+using System.Security.Cryptography.X509Certificates;
 
 Console.WriteLine("Hello, Browser!");
 public partial class Program
@@ -15,7 +17,7 @@ public partial class Program
     readonly static string zipFileName = "index.zip";
     readonly static string gitLogFile = "/git-log.txt";
     readonly static string fileName = "index.json";
-
+    readonly static JsonSerializerOptions options = new JsonSerializerOptions { IncludeFields = true };
     public static string getFlavor(string line)
     {
         var words = line.Split("/");
@@ -30,9 +32,10 @@ public partial class Program
 
     internal static async Task<string> loadTests(string measurementsUrl)
     {
-        var options = new JsonSerializerOptions { IncludeFields = true };
         DataDownloader dataDownloader = new();
         List<GraphPointData> list = new();
+        HashSet<string> flavors = new();
+        HashSet<string> taskNames = new();
         var bytes = await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName);
         var memoryStream = new MemoryStream(bytes);
         ZipArchive archive = new ZipArchive(memoryStream);
@@ -42,11 +45,13 @@ public partial class Program
         var data = JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
         for (var i = 0; i < data.Count; i++)
         {
+            flavors.Add(data[i].flavor);
             var flavor = data[i].flavor.Replace('.', '/');
             var logUrl = measurementsUrl + data[i].hash + "/" + flavor + gitLogFile;
             foreach (var pair in data[i].minTimes)
             {
                 list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl, data[i].hash));
+                taskNames.Add(pair.Key);
             }
             if (data[i].sizes != null)
             {
@@ -56,7 +61,9 @@ public partial class Program
                 }
             }
         }
-        var jsonData = JsonSerializer.Serialize(list, options);
+        NeededData neededData = new(list, flavors.ToList(), taskNames.ToList());
+        var jsonData = JsonSerializer.Serialize(neededData, options);
+
         return jsonData;
     }
 
@@ -64,5 +71,16 @@ public partial class Program
     internal static Task<string> loadData(string measurementsUrl)
     {
         return loadTests(measurementsUrl);
+    }
+
+    [JSExport]
+    internal static string GetSubFlavors(string jsonFlavors)
+    {
+        var flavors = JsonSerializer.Deserialize<List<string>>(jsonFlavors, options);
+        HashSet<string> subFlavors = new();
+        flavors.ForEach(flavor => subFlavors.UnionWith(flavor.Split('.')));
+        List<string> result = subFlavors.ToList();
+        result.ForEach(flv => Console.WriteLine(flv));
+        return JsonSerializer.Serialize(result, options);
     }
 }
