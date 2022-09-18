@@ -567,69 +567,27 @@ App.main = async function (applicationArguments) {
 
     function createMarkdown(taskNames) {
         let wantedData = getWantedData(taskNames);
-        let markDown = [];
+        let availableTests = [];
+        for (let i = 0; i < wantedData.length; i++) {
+            availableTests.push(tasksIds.get(wantedData[i].taskId));
+        }
         let testsLen = wantedData.length;
-        let availableFlavors = wantedData[0].availableFlavors;
+        let availableFlavors = JSON.stringify(wantedData[0].availableFlavors);
+        let dataLength = wantedData[0].data.length - 1;
+        let startDate = JSON.stringify(wantedData[0].data[0].commitTime);
+        let endDate = JSON.stringify(wantedData[0].data[dataLength].commitTime);
         if (testsLen > 0) {
-            let availableFlavors = wantedData[0].availableFlavors;
-            let availableFlavorsLen = availableFlavors.length;
-            for (let i = 0; i < testsLen; i++) {
-                let commits = [...mapByField(wantedData[i].data, "commitHash").keys()];
-                let results = mapByField(wantedData[i].data, "flavor");
-                var mapAsObject = Object.fromEntries(results);
-                let title = tasksIds.get(wantedData[i].taskId);
-                let availableFlavorsJson = JSON.stringify(availableFlavors);
-                let availableCommitsJson = JSON.stringify(commits);
-                for (let j = 0; j < availableFlavors.length; j++) {
-                    let currentFlavor = availableFlavors[j];
-                    let neededData = JSON.stringify(results.get);
-                    console.log(neededData);
-                }
-
-                /*markDown.push("|");
-                markDown.push(tasksIds.get(wantedData[i].taskId));
-                markDown.push(`(${commits[0].substring(0, 7)})`);
-                markDown.push("|");
-                for (let j = 1; j < commitsLen; j++) {
-                    markDown.push(commits[j].substring(0, 7));
-                    markDown.push("|");
-                }
-                markDown.push('\n');
-                for (let j = 0; j < commitsLen; j++) {
-                    markDown.push("|-:");
-                }
-                markDown.push("|");
-                markDown.push('\n');
-                for (let j = 0; j < availableFlavorsLen; j++) {
-                    markDown.push("|");
-                    markDown.push(availableFlavors[j]);
-                    markDown.push("|");
-                    let rowData = results.get(availableFlavors[j]);
-                    for (let k = 1; k < commitsLen; k++) {
-                        let wantedTest = rowData.find(function (d) {
-                            return d.commitHash === commits[k];
-                        });
-                        if (wantedTest !== undefined) {
-                            markDown.push(roundAccurately(wantedTest.percentage, 3).toString() + "%");
-                        } else {
-                            markDown.push("N/A");
-                        }
-                        markDown.push("|");
-                    }
-                    markDown.push('\n');
-                }
-                markDown.push('\n');*/
-            }
+            let mdContent = exports.Program.CreateMarkdownText(startDate, endDate, JSON.stringify(availableTests), availableFlavors);
             let firstCommit = wantedData[0].data[0].commitHash.substring(0, 7);
             let endCommit = wantedData[testsLen - 1].data[wantedData[testsLen - 1].data.length - 1].commitHash.substring(0, 7);
             let filename = firstCommit.substring(0, 7) + "..." + endCommit.substring(0, 7) + ".md";
-            return [filename, markDown.join('')];
+            return [filename, mdContent];
         } else {
             alert("No data selected");
         }
     }
 
-    function processData(data, flavors) {
+    function processData(data) {
         let dataLen = data.length;
         for (let i = 0; i < dataLen; i++) {
             data[i].time = new Date(data[i].commitTime);
@@ -649,7 +607,7 @@ App.main = async function (applicationArguments) {
     testNames.map(function (d, i) {
         tasksIds.set(i, d);
     });
-    processData(data, flavors);
+    processData(data);
     firstDate = data[0].time;
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
