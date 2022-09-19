@@ -43,6 +43,18 @@ public partial class Program
 
     }
 
+    public static string CreateDelimiter(int alignmentLength)
+    {
+        StringBuilder delimiterCell = new();
+        delimiterCell.Append('|');
+        for (int j = 0; j < alignmentLength; j++)
+        {
+            delimiterCell.Append('-');
+        }
+        delimiterCell.Append(":");
+        return delimiterCell.ToString();
+    }
+
     private static async Task<List<Item>> LoadItems(string measurementsUrl)
     {
         DataDownloader dataDownloader = new();
@@ -117,30 +129,26 @@ public partial class Program
         for (int i = 0; i < availableTests.Count; i++)
         {
 
-            var tableCorner = string.Format("|{0, -30} ({1, 10})|", availableTests[i], commits[0].Substring(0, 7));
+            var tableCorner = string.Format("|{0, -30}{1, 10}|", availableTests[i], commits[0].Substring(0, 7));
             markdown.Append(tableCorner);
 
             for (int j = 1; j < commitLen; j++)
             {
-                var commitCell = string.Format("{0, -10}|", commits[0].Substring(0, 7));
+                var commitCell = string.Format("{0, -10}|", commits[j].Substring(0, 7));
                 markdown.Append(commitCell);
             }
 
-            markdown.Append("\n|");
-
-            string delimiterCell = string.Format("{0, -30}", "-:|");
-            markdown.Append(delimiterCell);
+            markdown.Append("\n");
+            markdown.Append(CreateDelimiter(39));
             for (int j = 1; j < commitLen; j++)
             {
-                delimiterCell = string.Format("{0, 10}", "-:|");
-                markdown.Append(delimiterCell);
+                markdown.Append(CreateDelimiter(9));
             }
-
-            markdown.Append("\n|");
+            markdown.Append("|\n");
 
             for (int j = 0; j < availableFlavors.Count; j++)
             {
-                var rowName = string.Format("|{0, -30}|", availableFlavors[j]);
+                var rowName = string.Format("|{0, -40}|", availableFlavors[j]);
                 var filteredData = availableData.FindAll(data => data.taskMeasurementName == availableTests[i]
                                && data.flavor == availableFlavors[j]
                 );

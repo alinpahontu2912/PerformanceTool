@@ -179,6 +179,10 @@ App.main = async function (applicationArguments) {
                 .style("color", ordinal(flavors[i]))
                 .html(flavors[i]);
         }
+    }
+
+    function addSelectAllButton(domName) {
+        let chartParagraph = d3.select("#" + domName);
         let selection = chartParagraph.append("li");
         selection.append("button")
             .attr("class", "btn btn-block btn-primary")
@@ -186,10 +190,13 @@ App.main = async function (applicationArguments) {
             .attr("id", "legendSubmit")
             .html("Select All")
             .on("click", function () {
-                for (let i = 0; i < flavors.length; i++) {
-                    if (document.getElementById(flavors[i]).checked === false) {
-                        document.getElementById(flavors[i]).click();
-                    }
+                updateCheckboxes(flavors);
+                for (let i = 0; i < numTests; i++) {
+                    let curTest = testsData[i];
+                    curTest.availableFlavors = flavors;
+                    curTest.data = curTest.data.concat(curTest.hiddenData);
+                    curTest.hiddenData = [];
+                    updateGraph(curTest);
                 }
             });
     }
@@ -251,7 +258,30 @@ App.main = async function (applicationArguments) {
         for (let i = 0; i < tasksLen; i++) {
             let collapsible = d3.select("#" + domName)
                 .append("details")
-                .attr("id", tasks[i] + "collapsible");
+                .attr("id", tasks[i] + "collapsible")
+                .on("click", function () {
+                    let url = new URL(decodeURI(window.location));
+                    let test = url.searchParams.getAll("tasks");
+
+                    if (test.includes(tasks[i])) {
+                        test.splice(test.indexOf(tasks[i]), 1);
+                    } else {
+                        test.push(tasks[i]);
+                    }
+                    let test2 = url.search;
+                    console.log(test2);
+
+                    url.search = new URLSearchParams({
+                        "tasks": test.length === 0 ? [] : test,
+                        "commitFrom": url.searchParams.getAll('commitFrom'),
+                        "commitTo": url.searchParams.getAll('commitTo'),
+                        "flavors": url.searchParams.getAll("flavors"),
+                    })
+
+
+                    let stateObj = { id: "1" };
+                    window.history.replaceState("", "", url.toString());
+                });
             collapsible.append("summary")
                 .html(tasks[i]);
         }
@@ -360,19 +390,19 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function updateCheckboxes(allFlavors, wantedFlavors) {
-        let allFlavorsLen = allFlavors.length;
-        for (let i = 0; i < allFlavorsLen; i++) {
-            if (!wantedFlavors.includes(allFlavors[i])) {
-                document.getElementById(allFlavors[i]).checked = false;
+    function updateCheckboxes(wantedFlavors) {
+        let flavorsLen = flavors.length;
+        for (let i = 0; i < flavorsLen; i++) {
+            if (!wantedFlavors.includes(flavors[i])) {
+                document.getElementById(flavors[i]).checked = false;
             } else {
-                document.getElementById(allFlavors[i]).checked = true
+                document.getElementById(flavors[i]).checked = true
             }
         }
     }
 
     function updateGraphsByFlavor(wantedFlavors) {
-        updateCheckboxes(flavors, wantedFlavors);
+        updateCheckboxes(wantedFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
             curTest.data = curTest.data.concat(curTest.hiddenData);
@@ -521,9 +551,9 @@ App.main = async function (applicationArguments) {
                         .html(flavor);
                     let rowData = results.get(flavor);
                     for (let k = 1; k < commitsLen; k++) {
-                        let wantedTest = rowData.find(function (d) {
+                        let wantedTest = rowData !== undefined ? rowData.find(function (d) {
                             return d.commitHash === commits[k];
-                        });
+                        }) : undefined;
                         if (wantedTest !== undefined) {
                             row.append("td")
                                 .attr("class", "text-center")
@@ -587,11 +617,22 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function processData(data) {
+    function processTime(data) {
         let dataLen = data.length;
         for (let i = 0; i < dataLen; i++) {
             data[i].time = new Date(data[i].commitTime);
         }
+    }
+
+    function decodeURL() {
+        var url = new URL(decodeURI(window.location));
+        let tasks = url.searchParams.getAll('task');
+    }
+
+    function updateURL() {
+        let url = new URL(decodeURI(window.location));
+        let tasks = new URL("/tasks", url);
+        window.location.href = tasks;
     }
 
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
@@ -607,7 +648,7 @@ App.main = async function (applicationArguments) {
     testNames.map(function (d, i) {
         tasksIds.set(i, d);
     });
-    processData(data);
+    processTime(data);
     firstDate = data[0].time;
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
@@ -621,6 +662,7 @@ App.main = async function (applicationArguments) {
     addPresets(graphFilters, "flavorsPresets", selectFlavorsPreset);
     addPresets([...testToTask.keys()].sort(), "chartsPresets", selectChartsPreset);
     addLegendContent("chartLegend");
+    addSelectAllButton("chartLegend")
     addDatePickers("startDate", "endDate", "submit");
     selectDatePreset();
     addCommitDiffButton("commitsSubmit");
@@ -629,6 +671,7 @@ App.main = async function (applicationArguments) {
         let [filename, text] = createMarkdown([...testToTask.keys()].sort());
         download(filename, text);
     });
+    decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
