@@ -23,20 +23,6 @@ public partial class Program
     static List<string> flavors = new();
     static List<string> taskNames = new();
 
-    public static string getFlavor(string line)
-    {
-        var words = line.Split("/");
-        StringBuilder stringBuilder = new();
-        for (var i = 2; i < words.Length - 1; i++)
-        {
-            stringBuilder.Append(words[i] + ".");
-        }
-
-        return stringBuilder.ToString().Remove(stringBuilder.Length - 1);
-    }
-
-
-
     public static void CalculatePercentages()
     {
         var tasksLen = taskNames.Count;
@@ -57,19 +43,24 @@ public partial class Program
 
     }
 
-    internal static async Task<string> loadTests(string measurementsUrl)
+    private static async Task<List<Item>> LoadItems(string measurementsUrl)
     {
         DataDownloader dataDownloader = new();
+        using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
+        using var archive = new ZipArchive(memoryStream);
+        var entry = archive.GetEntry(fileName);
+        using Stream readStream = entry.Open();
+        using StreamReader streamReader = new StreamReader(readStream);
+        return JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
+    }
+
+    internal static async Task<string> LoadTests(string measurementsUrl)
+    {
         HashSet<string> flavorsSet = new();
         HashSet<string> taskNamesSet = new();
-        var bytes = await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName);
-        var memoryStream = new MemoryStream(bytes);
-        ZipArchive archive = new ZipArchive(memoryStream);
-        var entry = archive.GetEntry(fileName);
-        Stream readStream = entry.Open();
-        StreamReader streamReader = new StreamReader(readStream);
-        var data = JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
-        for (var i = 0; i < data.Count; i++)
+        var data = await LoadItems(measurementsUrl);
+        var dataLen = data.Count;
+        for (var i = 0; i < dataLen; i++)
         {
             flavorsSet.Add(data[i].flavor);
             var flavor = data[i].flavor.Replace('.', '/');
@@ -89,16 +80,10 @@ public partial class Program
         }
         flavors = flavorsSet.ToList();
         taskNames = taskNamesSet.ToList();
-        NeededData neededData = new(list, flavors, taskNames);
+        RequiredData neededData = new(list, flavors, taskNames);
         CalculatePercentages();
         var jsonData = JsonSerializer.Serialize(neededData, options);
         return jsonData;
-    }
-
-    [JSExport]
-    internal static Task<string> loadData(string measurementsUrl)
-    {
-        return loadTests(measurementsUrl);
     }
 
     [JSExport]
@@ -179,6 +164,12 @@ public partial class Program
             markdown.Append("\n");
         }
         return markdown.ToString();
+    }
+
+    [JSExport]
+    internal static Task<string> LoadData(string measurementsUrl)
+    {
+        return LoadTests(measurementsUrl);
     }
 
 }

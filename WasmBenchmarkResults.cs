@@ -56,13 +56,13 @@ namespace WasmBenchmarkResults
 
     }
 
-    public class NeededData
+    public class RequiredData
     {
         public List<GraphPointData> graphPoints;
         public List<string> flavors;
         public List<string> taskNames;
 
-        public NeededData(List<GraphPointData> graphPoints, List<string> flavors, List<string> taskNames)
+        public RequiredData(List<GraphPointData> graphPoints, List<string> flavors, List<string> taskNames)
         {
             this.graphPoints = graphPoints;
             this.flavors = flavors;
