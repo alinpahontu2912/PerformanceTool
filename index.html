@@ -18,7 +18,7 @@
 </head>
 <body>
     <main id="main" style="display: 'none'; max-height: unset !important; height: unset !important; min-height: 100vh ">
-        <div class="flex-shrink-0 p-3 bg-white collapse collapse-horizontal show" style="width: 15%;" id="menu">
+        <div class="flex-shrink-0 p-3 bg-white collapse collapse-horizontal show" id="menu">
             <a class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
                 <span class="fs-5 fw-semibold">Menu</span>
             </a>
@@ -46,7 +46,7 @@
                 <li>
                     <div class="mb-3">
                         <label for="text" class="form-label">First Commit Hash</label><input type="text" id="firstCommit" class="form-control">
-                        <label for="text" class="form-label">Second Commit Hash</label><input type="text" id="secondCommit" class="form-control">
+                        <label for="text" class="form-label">Last Commit Hash</label><input type="text" id="lastCommit" class="form-control">
                     </div>
                     <center><button class="btn btn-block btn-primary" type="submit" id="commitsSubmit">Load commit diff</button></center>
                 </li>
@@ -90,7 +90,7 @@
             </ul>
         </div>
         <div class="b-example-divider" style="height: auto !important"></div>
-        <div style="overflow-x: auto; overflow-y: auto; text-align: justify; max-height: auto !important; width: 85%" id="charts" class="p-3">
+        <div style="overflow-x: auto; overflow-y: auto; text-align: justify; max-height: auto !important; width: 80%" id="charts" class="p-3">
             <div class="d-flex">
                 <div class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
