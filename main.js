@@ -172,6 +172,7 @@ App.main = async function (applicationArguments) {
                             updateGraph(curTest);
                         }
                     }
+                    permalinkFlavors();
                 });
             selection.append("label")
                 .attr("class", "form-check-label")
@@ -260,27 +261,7 @@ App.main = async function (applicationArguments) {
                 .append("details")
                 .attr("id", tasks[i] + "collapsible")
                 .on("click", function () {
-                    let url = new URL(decodeURI(window.location));
-                    let test = url.searchParams.getAll("tasks");
-
-                    if (test.includes(tasks[i])) {
-                        test.splice(test.indexOf(tasks[i]), 1);
-                    } else {
-                        test.push(tasks[i]);
-                    }
-                    let test2 = url.search;
-                    console.log(test2);
-
-                    url.search = new URLSearchParams({
-                        "tasks": test.length === 0 ? [] : test,
-                        "commitFrom": url.searchParams.getAll('commitFrom'),
-                        "commitTo": url.searchParams.getAll('commitTo'),
-                        "flavors": url.searchParams.getAll("flavors"),
-                    })
-
-
-                    let stateObj = { id: "1" };
-                    window.history.replaceState("", "", url.toString());
+                    permalinkTask(tasks[i]);
                 });
             collapsible.append("summary")
                 .html(tasks[i]);
@@ -306,6 +287,7 @@ App.main = async function (applicationArguments) {
                     updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
                     updateGraph(testsData[i]);
                 }
+                permalinkDates(firstCommit.time, lastCommit.time);
             }
             testData.dataGroup.select(".brush").call(testData.brush.move, null);
         }
@@ -428,6 +410,7 @@ App.main = async function (applicationArguments) {
     function selectFlavorsPreset(filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
         updateGraphsByFlavor(wantedFlavors);
+        permalinkFlavors();
     }
 
     function regexUpdate(filter) {
@@ -463,7 +446,6 @@ App.main = async function (applicationArguments) {
                 startDate.setDate(endDate.getDate() - 14);
                 break;
         }
-
         for (let i = 0; i < numTests; i++) {
             updateDataOnDates(testsData[i], startDate, endDate);
             updateGraph(testsData[i]);
@@ -471,7 +453,73 @@ App.main = async function (applicationArguments) {
 
         document.getElementById("startDate").valueAsDate = startDate;
         document.getElementById("endDate").valueAsDate = endDate;
+
+        permalinkDates(startDate, endDate);
     }
+
+    function permalinkDates(startDate, endDate) {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        params.set("startDate", startDate.toLocaleDateString('en-US'));
+        params.set("endDate", endDate.toLocaleDateString('en-US'));
+        url.search = params;
+        window.history.replaceState("", "", url.toString());
+    }
+
+    function permalinkTask(openTask) {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        let task = params.getAll("task");
+        task.splice(task.indexOf(""), 1);
+        params.set("task", task.length === 0 ? openTask : null);
+        url.search = params;
+        window.history.replaceState("", "", url.toString());
+    }
+
+    function permalinkFlavors() {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        let urlFlavor = params.get("flavors");
+        console.log(urlFlavor);
+        let availableFlavors = [];
+        if (urlFlavor === null) {
+            availableFlavors = testsData[0].availableFlavors.map(function (d) {
+                return flavors.indexOf(d);
+            });
+        }
+        else {
+            availableFlavors = urlFlavor.split(",").map(function (d) {
+                return +d;
+            });
+        }
+        console.log(availableFlavors);
+        params.set("flavors", availableFlavors);
+        url.search = params;
+        window.history.replaceState("", "", url.toString());
+    }
+
+    /*function decodeURL() {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        let task = params.get("task");
+        let startDate = new Date(params.get("startDate"));
+        let endDate = new Date(params.get("endDate"));
+        let urlFlavors = params.get("flavors");
+        let availableFlavors = urlFlavors === null ? flavors : urlFlavors.split(',').map(function (d) {
+            return flavors[d];
+        });
+        console.log(availableFlavors);
+        updateCheckboxes(availableFlavors);
+        for (let i = 0; i < numTests; i++) {
+            let curTest = testsData[i];
+            curTest.availableFlavors = availableFlavors;
+            updateDataOnDates(curTest, startDate, endDate);
+            updateGraph(curTest);
+        }
+        if (task !== null) {
+            document.getElementById(task + "collapsible").open = true;
+        }
+    }*/
 
     function addDatePickers(firstDatePicker, secondDatePicker, submitButton) {
         let startDate = null;
@@ -500,6 +548,7 @@ App.main = async function (applicationArguments) {
                         updateDataOnDates(testsData[i], startDate, endDate);
                         updateGraph(testsData[i]);
                     }
+                    permalinkDates(startDate, endDate);
                 }
             }
         });
@@ -624,17 +673,6 @@ App.main = async function (applicationArguments) {
         }
     }
 
-    function decodeURL() {
-        var url = new URL(decodeURI(window.location));
-        let tasks = url.searchParams.getAll('task');
-    }
-
-    function updateURL() {
-        let url = new URL(decodeURI(window.location));
-        let tasks = new URL("/tasks", url);
-        window.location.href = tasks;
-    }
-
     const exports = await App.MONO.mono_wasm_get_assembly_exports("PerformanceTool.dll");
     const promise = exports.Program.LoadData(measurementsUrl);
     let value = await promise;
@@ -671,8 +709,8 @@ App.main = async function (applicationArguments) {
         let [filename, text] = createMarkdown([...testToTask.keys()].sort());
         download(filename, text);
     });
-    decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
+    decodeURL();
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
