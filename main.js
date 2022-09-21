@@ -18,6 +18,7 @@ App.main = async function (applicationArguments) {
     var firstDate = null;
     var testsData = [];
 
+
     class TaskData {
         constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, xGrid, yGrid, yAxisLeft, yAxisRight) {
             this.taskId = taskId;
@@ -172,7 +173,7 @@ App.main = async function (applicationArguments) {
                             updateGraph(curTest);
                         }
                     }
-                    permalinkFlavors();
+                    permalinkFlavors(testsData[0].availableFlavors);
                 });
             selection.append("label")
                 .attr("class", "form-check-label")
@@ -261,7 +262,22 @@ App.main = async function (applicationArguments) {
                 .append("details")
                 .attr("id", tasks[i] + "collapsible")
                 .on("click", function () {
-                    permalinkTask(tasks[i]);
+                    let url = new URL(decodeURI(window.location));
+                    let params = new URLSearchParams(url.search);
+                    let openTasks = params.get("tasks");
+                    if (openTasks !== null) {
+                        let taskNames = openTasks.split(',');
+                        if (taskNames.includes(tasks[i])) {
+                            taskNames.splice(taskNames.indexOf(tasks[i]), 1);
+                        } else {
+                            taskNames.push(tasks[i]);
+                        }
+                        params.set("tasks", taskNames.join());
+                    } else {
+                        params.set("tasks", tasks[i]);
+                    }
+                    url.search = params;
+                    window.history.replaceState("", "", url.toString());
                 });
             collapsible.append("summary")
                 .html(tasks[i]);
@@ -410,7 +426,7 @@ App.main = async function (applicationArguments) {
     function selectFlavorsPreset(filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
         updateGraphsByFlavor(wantedFlavors);
-        permalinkFlavors();
+        permalinkFlavors(wantedFlavors);
     }
 
     function regexUpdate(filter) {
@@ -460,70 +476,68 @@ App.main = async function (applicationArguments) {
     function permalinkDates(startDate, endDate) {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        params.set("startDate", startDate.toLocaleDateString('en-US'));
-        params.set("endDate", endDate.toLocaleDateString('en-US'));
+        params.set("startDate", startDate.toISOString().split('T'));
+        params.set("endDate", endDate.toISOString().split('T'));
         url.search = params;
         window.history.replaceState("", "", url.toString());
     }
 
-    function permalinkTask(openTask) {
+    function permalinkFlavors(availableFlavors) {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        let task = params.getAll("task");
-        task.splice(task.indexOf(""), 1);
-        params.set("task", task.length === 0 ? openTask : null);
+        let flavorsIndexes = availableFlavors.map(function (flavor) {
+            return flavors.indexOf(flavor);
+        });
+        params.set("flavors", flavorsIndexes.join());
         url.search = params;
         window.history.replaceState("", "", url.toString());
     }
 
-    function permalinkFlavors() {
+    function createInitialState() {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        let urlFlavor = params.get("flavors");
-        console.log(urlFlavor);
-        let availableFlavors = [];
-        if (urlFlavor === null) {
-            availableFlavors = testsData[0].availableFlavors.map(function (d) {
-                return flavors.indexOf(d);
-            });
+        if (params.get("startDate") === null && params.get("endDate") === null) {
+            let endDate = new Date();
+            let startDate = new Date();
+            startDate.setDate(endDate.getDate() - 14);
+            permalinkDates(startDate, endDate);
         }
-        else {
-            availableFlavors = urlFlavor.split(",").map(function (d) {
-                return +d;
-            });
-        }
-        console.log(availableFlavors);
-        params.set("flavors", availableFlavors);
-        url.search = params;
-        window.history.replaceState("", "", url.toString());
     }
 
-    /*function decodeURL() {
+    function decodeURL() {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        let task = params.get("task");
+        let tasks = params.get("tasks");
         let startDate = new Date(params.get("startDate"));
         let endDate = new Date(params.get("endDate"));
+        document.getElementById("startDate").valueAsDate = startDate;
+        document.getElementById("endDate").valueAsDate = endDate;
         let urlFlavors = params.get("flavors");
-        let availableFlavors = urlFlavors === null ? flavors : urlFlavors.split(',').map(function (d) {
-            return flavors[d];
-        });
-        console.log(availableFlavors);
+        let availableFlavors = [];
+        if (urlFlavors !== null) {
+            urlFlavors.split(',').forEach(function (d) {
+                availableFlavors.push(flavors[d]);
+            });
+        } else {
+            availableFlavors = Array.from(flavors);
+        }
         updateCheckboxes(availableFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
-            curTest.availableFlavors = availableFlavors;
+            curTest.availableFlavors = Array.from(availableFlavors);
             updateDataOnDates(curTest, startDate, endDate);
             updateGraph(curTest);
         }
-        if (task !== null) {
-            document.getElementById(task + "collapsible").open = true;
+        if (tasks !== null && tasks !== "") {
+            let openTasks = tasks.split(',');
+            openTasks.forEach(task => document.getElementById(task + "collapsible").open = true);
+
         }
-    }*/
+    }
 
     function addDatePickers(firstDatePicker, secondDatePicker, submitButton) {
-        let startDate = null;
-        let endDate = null;
+        let startDate = null,
+            endDate = null;
 
         d3.select("#" + firstDatePicker).on("change", function () {
             startDate = new Date(this.value);
@@ -678,7 +692,7 @@ App.main = async function (applicationArguments) {
     let value = await promise;
     let unfilteredData = JSON.parse(value);
     let data = unfilteredData.graphPoints;
-    let flavors = unfilteredData.flavors;
+    let flavors = Array.from(unfilteredData.flavors);
     let testNames = unfilteredData.taskNames.sort();
     numTests = testNames.length;
     let graphFilters = JSON.parse(exports.Program.GetSubFlavors(JSON.stringify(flavors)));
@@ -702,15 +716,15 @@ App.main = async function (applicationArguments) {
     addLegendContent("chartLegend");
     addSelectAllButton("chartLegend")
     addDatePickers("startDate", "endDate", "submit");
-    selectDatePreset();
     addCommitDiffButton("commitsSubmit");
     createTable("modalBody", "tableButton", [...testToTask.keys()].sort());
     document.getElementById("markDownButton").addEventListener("click", function () {
         let [filename, text] = createMarkdown([...testToTask.keys()].sort());
         download(filename, text);
     });
+    createInitialState();
+    decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
-    decodeURL();
     await App.MONO.mono_run_main("PerformanceTool.dll", applicationArguments);
 }
