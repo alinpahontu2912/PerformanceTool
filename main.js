@@ -29,6 +29,7 @@ async function mainJS() {
     var firstDate = null;
     var testsData = [];
 
+
     class TaskData {
         constructor(taskId, legendName, dataGroup, allData, flavors, x, y, xAxis, xGrid, yGrid, yAxisLeft, yAxisRight) {
             this.taskId = taskId;
@@ -183,6 +184,7 @@ async function mainJS() {
                             updateGraph(curTest);
                         }
                     }
+                    permalinkFlavors(testsData[0].availableFlavors);
                 });
             selection.append("label")
                 .attr("class", "form-check-label")
@@ -190,17 +192,25 @@ async function mainJS() {
                 .style("color", ordinal(flavors[i]))
                 .html(flavors[i]);
         }
+    }
+
+    function addSelectAllButton(domName) {
+        let chartParagraph = d3.select("#" + domName);
         let selection = chartParagraph.append("li");
-        selection.append("button")
+        selection.append("center")
+            .append("button")
             .attr("class", "btn btn-block btn-primary")
             .attr("type", "submit")
             .attr("id", "legendSubmit")
             .html("Select All")
             .on("click", function () {
-                for (let i = 0; i < flavors.length; i++) {
-                    if (document.getElementById(flavors[i]).checked === false) {
-                        document.getElementById(flavors[i]).click();
-                    }
+                updateCheckboxes(flavors);
+                for (let i = 0; i < numTests; i++) {
+                    let curTest = testsData[i];
+                    curTest.availableFlavors = flavors;
+                    curTest.data = curTest.data.concat(curTest.hiddenData);
+                    curTest.hiddenData = [];
+                    updateGraph(curTest);
                 }
             });
     }
@@ -262,7 +272,25 @@ async function mainJS() {
         for (let i = 0; i < tasksLen; i++) {
             let collapsible = d3.select("#" + domName)
                 .append("details")
-                .attr("id", tasks[i] + "collapsible");
+                .attr("id", tasks[i] + "collapsible")
+                .on("click", function () {
+                    let url = new URL(decodeURI(window.location));
+                    let params = new URLSearchParams(url.search);
+                    let openTasks = params.get("tasks");
+                    if (openTasks !== null) {
+                        let taskNames = openTasks.split(',');
+                        if (taskNames.includes(tasks[i])) {
+                            taskNames.splice(taskNames.indexOf(tasks[i]), 1);
+                        } else {
+                            taskNames.push(tasks[i]);
+                        }
+                        params.set("tasks", taskNames.join());
+                    } else {
+                        params.set("tasks", tasks[i]);
+                    }
+                    url.search = params;
+                    window.history.replaceState("", "", url.toString());
+                });
             collapsible.append("summary")
                 .html(tasks[i]);
         }
@@ -287,6 +315,7 @@ async function mainJS() {
                     updateDataOnDates(testsData[i], firstCommit.time, lastCommit.time);
                     updateGraph(testsData[i]);
                 }
+                permalinkDates(firstCommit.time, lastCommit.time);
             }
             testData.dataGroup.select(".brush").call(testData.brush.move, null);
         }
@@ -371,19 +400,19 @@ async function mainJS() {
         }
     }
 
-    function updateCheckboxes(allFlavors, wantedFlavors) {
-        let allFlavorsLen = allFlavors.length;
-        for (let i = 0; i < allFlavorsLen; i++) {
-            if (!wantedFlavors.includes(allFlavors[i])) {
-                document.getElementById(allFlavors[i]).checked = false;
+    function updateCheckboxes(wantedFlavors) {
+        let flavorsLen = flavors.length;
+        for (let i = 0; i < flavorsLen; i++) {
+            if (!wantedFlavors.includes(flavors[i])) {
+                document.getElementById(flavors[i]).checked = false;
             } else {
-                document.getElementById(allFlavors[i]).checked = true
+                document.getElementById(flavors[i]).checked = true
             }
         }
     }
 
     function updateGraphsByFlavor(wantedFlavors) {
-        updateCheckboxes(flavors, wantedFlavors);
+        updateCheckboxes(wantedFlavors);
         for (let i = 0; i < numTests; i++) {
             let curTest = testsData[i];
             curTest.data = curTest.data.concat(curTest.hiddenData);
@@ -395,7 +424,6 @@ async function mainJS() {
             curTest.data = curTest.data.filter(function (d) {
                 return wantedFlavors.includes(d.flavor);
             });
-            curTest.availableFlavors.length = 0;
             curTest.availableFlavors = Array.from(wantedFlavors);
             updateGraph(curTest);
         }
@@ -409,6 +437,7 @@ async function mainJS() {
     function selectFlavorsPreset(filter) {
         let wantedFlavors = flavors.filter(flavor => flavor.includes(filter));
         updateGraphsByFlavor(wantedFlavors);
+        permalinkFlavors(wantedFlavors);
     }
 
     function regexUpdate(filter) {
@@ -444,7 +473,6 @@ async function mainJS() {
                 startDate.setDate(endDate.getDate() - 14);
                 break;
         }
-
         for (let i = 0; i < numTests; i++) {
             updateDataOnDates(testsData[i], startDate, endDate);
             updateGraph(testsData[i]);
@@ -452,11 +480,81 @@ async function mainJS() {
 
         document.getElementById("startDate").valueAsDate = startDate;
         document.getElementById("endDate").valueAsDate = endDate;
+
+        permalinkDates(startDate, endDate);
+    }
+
+    function permalinkDates(startDate, endDate) {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        params.set("startDate", startDate.toISOString().split('T'));
+        params.set("endDate", endDate.toISOString().split('T'));
+        url.search = params;
+        window.history.replaceState("", "", url.toString());
+    }
+
+    function permalinkFlavors(availableFlavors) {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        let flavorsIndexes = availableFlavors.map(function (flavor) {
+            return flavors.indexOf(flavor);
+        });
+        params.set("flavors", flavorsIndexes.join());
+        url.search = params;
+        window.history.replaceState("", "", url.toString());
+    }
+
+    function createInitialState() {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        if (params.get("startDate") === null && params.get("endDate") === null) {
+            let endDate = new Date();
+            let startDate = new Date();
+            startDate.setDate(endDate.getDate() - 14);
+            permalinkDates(startDate, endDate);
+        }
+    }
+
+    function decodeURL() {
+        let url = new URL(decodeURI(window.location));
+        let params = new URLSearchParams(url.search);
+        let tasks = params.get("tasks");
+        let startDate = new Date(params.get("startDate"));
+        let endDate = new Date(params.get("endDate"));
+        document.getElementById("startDate").valueAsDate = startDate;
+        document.getElementById("endDate").valueAsDate = endDate;
+        let urlFlavors = params.get("flavors");
+        let availableFlavors = [];
+        if (urlFlavors !== null) {
+            urlFlavors.split(',').forEach(function (d) {
+                availableFlavors.push(flavors[d]);
+            });
+        } else {
+            availableFlavors = Array.from(flavors);
+        }
+        updateCheckboxes(availableFlavors);
+        for (let i = 0; i < numTests; i++) {
+            let curTest = testsData[i];
+            curTest.availableFlavors = Array.from(availableFlavors);
+            updateDataOnDates(curTest, startDate, endDate);
+            updateGraph(curTest);
+        }
+        if (tasks !== null && tasks !== "") {
+            let openTasks = tasks.split(',');
+            openTasks.forEach(task => document.getElementById(task + "collapsible").open = true);
+
+        }
+    }
+
+    function addURLButton(domname) {
+        d3.select("#" + domname).on("click", function () {
+            navigator.clipboard.writeText(window.location.href);
+        });
     }
 
     function addDatePickers(firstDatePicker, secondDatePicker, submitButton) {
-        let startDate = null;
-        let endDate = null;
+        let startDate = null,
+            endDate = null;
 
         d3.select("#" + firstDatePicker).on("change", function () {
             startDate = new Date(this.value);
@@ -481,6 +579,7 @@ async function mainJS() {
                         updateDataOnDates(testsData[i], startDate, endDate);
                         updateGraph(testsData[i]);
                     }
+                    permalinkDates(startDate, endDate);
                 }
             }
         });
@@ -502,7 +601,7 @@ async function mainJS() {
             let table = d3.select("#" + modalName).append("table")
                 .attr("id", "table")
                 .attr("class", "table table-hover table-bordered");
-            let wantedData = getWantedData(taskNames);
+            let wantedData = getOpenedChartsData(taskNames);
             let testsLen = wantedData.length;
             for (let i = 0; i < testsLen; i++) {
                 let commits = [...mapByField(wantedData[i].data, "commitHash").keys()];
@@ -532,9 +631,9 @@ async function mainJS() {
                         .html(flavor);
                     let rowData = results.get(flavor);
                     for (let k = 1; k < commitsLen; k++) {
-                        let wantedTest = rowData.find(function (d) {
+                        let wantedTest = rowData !== undefined ? rowData.find(function (d) {
                             return d.commitHash === commits[k];
-                        });
+                        }) : undefined;
                         if (wantedTest !== undefined) {
                             row.append("td")
                                 .attr("class", "text-center")
@@ -551,7 +650,7 @@ async function mainJS() {
         });
     }
 
-    function getWantedData(taskNames) {
+    function getOpenedChartsData(taskNames) {
         let tasksLen = taskNames.length;
         let neededData = [];
         for (let i = 0; i < tasksLen; i++) {
@@ -577,7 +676,7 @@ async function mainJS() {
     }
 
     function createMarkdown(taskNames) {
-        let wantedData = getWantedData(taskNames);
+        let wantedData = getOpenedChartsData(taskNames);
         let availableTests = [];
         for (let i = 0; i < wantedData.length; i++) {
             availableTests.push(tasksIds.get(wantedData[i].taskId));
@@ -598,7 +697,7 @@ async function mainJS() {
         }
     }
 
-    function processData(data) {
+    function processTime(data) {
         let dataLen = data.length;
         for (let i = 0; i < dataLen; i++) {
             data[i].time = new Date(data[i].commitTime);
@@ -609,7 +708,7 @@ async function mainJS() {
     let value = await promise;
     let unfilteredData = JSON.parse(value);
     let data = unfilteredData.graphPoints;
-    let flavors = unfilteredData.flavors;
+    let flavors = Array.from(unfilteredData.flavors);
     let testNames = unfilteredData.taskNames.sort();
     numTests = testNames.length;
     let graphFilters = JSON.parse(exports.Program.GetSubFlavors(JSON.stringify(flavors)));
@@ -617,11 +716,12 @@ async function mainJS() {
     testNames.map(function (d, i) {
         tasksIds.set(i, d);
     });
-    processData(data);
+    processTime(data);
     firstDate = data[0].time;
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
         .range(colors);
+    createInitialState();
     appendCollapsibles("graphs", testToTask);
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
@@ -631,14 +731,16 @@ async function mainJS() {
     addPresets(graphFilters, "flavorsPresets", selectFlavorsPreset);
     addPresets([...testToTask.keys()].sort(), "chartsPresets", selectChartsPreset);
     addLegendContent("chartLegend");
+    addSelectAllButton("chartLegend")
     addDatePickers("startDate", "endDate", "submit");
-    selectDatePreset();
     addCommitDiffButton("commitsSubmit");
     createTable("modalBody", "tableButton", [...testToTask.keys()].sort());
     document.getElementById("markDownButton").addEventListener("click", function () {
         let [filename, text] = createMarkdown([...testToTask.keys()].sort());
         download(filename, text);
     });
+    addURLButton("copyURL");
+    decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
 
