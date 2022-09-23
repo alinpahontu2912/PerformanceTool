@@ -59,8 +59,8 @@ App.main = async function (applicationArguments) {
         return new Map(Object.entries(obj));
     }
 
-    function getResultsBetweenDates(allData, startDate, endDate) {
-        let result = allData.filter(function (d) {
+    function getResultsBetweenDates(data, startDate, endDate) {
+        let result = data.filter(function (d) {
             let date = d.time;
             return date.getTime() >= startDate.getTime()
                 && date.getTime() <= endDate.getTime();
@@ -473,19 +473,11 @@ App.main = async function (applicationArguments) {
         permalinkDates(startDate, endDate);
     }
 
-    function formatDate(date) {
-        return [
-            (date.getMonth() + 1).toString().padStart(2, '0'),
-            date.getDate().toString().padStart(2, '0'),
-            date.getFullYear().toString().padStart(4, '0'),
-        ].join('/');
-    }
-
     function permalinkDates(startDate, endDate) {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        params.set("startDate", formatDate(startDate));
-        params.set("endDate", formatDate(endDate));
+        params.set("startDate", startDate.toISOString());
+        params.set("endDate", endDate.toISOString());
         url.search = params;
         window.history.replaceState("", "", url.toString());
     }
@@ -518,8 +510,14 @@ App.main = async function (applicationArguments) {
         let tasks = params.get("tasks");
         let startDate = new Date(params.get("startDate"));
         let endDate = new Date(params.get("endDate"));
+
+        console.log(startDate);
+        console.log(endDate);
+
         document.getElementById("startDate").valueAsDate = startDate;
         document.getElementById("endDate").valueAsDate = endDate;
+        console.log(startDate);
+        console.log(endDate);
         let urlFlavors = params.get("flavors");
         let availableFlavors = [];
         if (urlFlavors !== null) {
@@ -538,6 +536,10 @@ App.main = async function (applicationArguments) {
         }
         if (tasks !== null && tasks !== "") {
             let openTasks = tasks.split(',');
+            if (openTasks[0] === "")
+                openTasks.shift();
+            console.log(typeof openTasks);
+            console.log(openTasks);
             openTasks.forEach(task => document.getElementById(task + "collapsible").open = true);
 
         }
@@ -723,7 +725,6 @@ App.main = async function (applicationArguments) {
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
         .range(colors);
-    createInitialState();
     appendCollapsibles("graphs", testToTask);
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
@@ -742,6 +743,7 @@ App.main = async function (applicationArguments) {
         download(filename, text);
     });
     addURLButton("copyURL");
+    createInitialState();
     decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
