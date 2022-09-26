@@ -111,12 +111,12 @@ public partial class Program
     [JSExport]
     internal static string CreateMarkdownText(string date1, string date2, string jsonTests, string jsonFlavors)
     {
-        var startDate = DateTime.Parse(JsonSerializer.Deserialize<string>(date1, options));
-        var endDate = DateTime.Parse(JsonSerializer.Deserialize<string>(date2, options));
+        var startDate = DateTimeOffset.Parse(JsonSerializer.Deserialize<string>(date1, options));
+        var endDate = DateTimeOffset.Parse(JsonSerializer.Deserialize<string>(date2, options));
         var availableTests = JsonSerializer.Deserialize<List<string>>(jsonTests, options);
         var availableFlavors = JsonSerializer.Deserialize<List<string>>(jsonFlavors, options);
-        var availableData = list.FindAll(point => DateTime.Parse(point.commitTime) >= startDate
-                        && DateTime.Parse(point.commitTime) <= endDate);
+        var availableData = list.FindAll(point => DateTimeOffset.Parse(point.commitTime) >= startDate
+                        && DateTimeOffset.Parse(point.commitTime) <= endDate);
         HashSet<string> commitSet = new();
         foreach (var item in availableData)
         {

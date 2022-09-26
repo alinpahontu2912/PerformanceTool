@@ -70,8 +70,8 @@ async function mainJS() {
         return new Map(Object.entries(obj));
     }
 
-    function getResultsBetweenDates(allData, startDate, endDate) {
-        let result = allData.filter(function (d) {
+    function getResultsBetweenDates(data, startDate, endDate) {
+        let result = data.filter(function (d) {
             let date = d.time;
             return date.getTime() >= startDate.getTime()
                 && date.getTime() <= endDate.getTime();
@@ -487,8 +487,8 @@ async function mainJS() {
     function permalinkDates(startDate, endDate) {
         let url = new URL(decodeURI(window.location));
         let params = new URLSearchParams(url.search);
-        params.set("startDate", startDate.toISOString().split('T'));
-        params.set("endDate", endDate.toISOString().split('T'));
+        params.set("startDate", startDate.toISOString());
+        params.set("endDate", endDate.toISOString());
         url.search = params;
         window.history.replaceState("", "", url.toString());
     }
@@ -521,8 +521,14 @@ async function mainJS() {
         let tasks = params.get("tasks");
         let startDate = new Date(params.get("startDate"));
         let endDate = new Date(params.get("endDate"));
+
+        console.log(startDate);
+        console.log(endDate);
+
         document.getElementById("startDate").valueAsDate = startDate;
         document.getElementById("endDate").valueAsDate = endDate;
+        console.log(startDate);
+        console.log(endDate);
         let urlFlavors = params.get("flavors");
         let availableFlavors = [];
         if (urlFlavors !== null) {
@@ -541,15 +547,22 @@ async function mainJS() {
         }
         if (tasks !== null && tasks !== "") {
             let openTasks = tasks.split(',');
+            if (openTasks[0] === "")
+                openTasks.shift();
+            console.log(typeof openTasks);
+            console.log(openTasks);
             openTasks.forEach(task => document.getElementById(task + "collapsible").open = true);
 
         }
     }
 
     function addURLButton(domname) {
-        d3.select("#" + domname).on("click", function () {
-            navigator.clipboard.writeText(window.location.href);
-        });
+        d3.select("#" + domname)
+            .on("click", function () {
+                navigator.clipboard.writeText(window.location.href);
+                d3.select(this).html("Copied!");
+                setTimeout(_ => d3.select(this).html("Copy Permalink"), 3000);
+            });
     }
 
     function addDatePickers(firstDatePicker, secondDatePicker, submitButton) {
@@ -638,7 +651,7 @@ async function mainJS() {
                             row.append("td")
                                 .attr("class", "text-center")
                                 .style("background-color", wantedTest.percentage < 0 ? greenShade((-1) * wantedTest.percentage) : redShade(wantedTest.percentage))
-                                .attr("title", `Test Result: ${wantedTest.minTime}`)
+                                .attr("title", `Test Result: ${wantedTest.minTime} \n Percentage: ${wantedTest.percentage}`)
                                 .html(`${roundAccurately(wantedTest.percentage, 3)} % `);
                         } else {
                             row.append("td")
@@ -718,10 +731,10 @@ async function mainJS() {
     });
     processTime(data);
     firstDate = data[0].time;
+    console.log(data);
     var ordinal = d3.scaleOrdinal()
         .domain(flavors)
         .range(colors);
-    createInitialState();
     appendCollapsibles("graphs", testToTask);
     for (let i = 0; i < numTests; i++) {
         testsData.push(buildGraph(data, flavors, i));
@@ -740,6 +753,7 @@ async function mainJS() {
         download(filename, text);
     });
     addURLButton("copyURL");
+    createInitialState();
     decodeURL();
     document.querySelector("#loadingCircle").style.display = 'none';
     document.querySelector("#main").style.display = '';
