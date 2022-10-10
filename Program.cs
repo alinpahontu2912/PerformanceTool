@@ -86,7 +86,9 @@ public partial class Program
             {
                 foreach (var pair in data[i].sizes)
                 {
-                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, data[i].hash, "bytes"));
+                    var measurementName = "Size, " + pair.Key;
+                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>(measurementName, (double)pair.Value), logUrl, data[i].hash, "bytes"));
+                    taskNamesSet.Add(measurementName);
                 }
             }
         }
