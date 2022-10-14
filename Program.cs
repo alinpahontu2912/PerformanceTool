@@ -1,13 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO.Compression;
-using System.IO;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Text;
-using System.Threading.Tasks;
-using System.Linq;
 using WasmBenchmarkResults;
 using System.Text.Json.Serialization;
 
@@ -17,7 +12,12 @@ public partial class Program
     readonly static string zipFileName = "index.zip";
     readonly static string gitLogFile = "/git-log.txt";
     readonly static string fileName = "index.json";
-    readonly static JsonSerializerOptions options = new JsonSerializerOptions { IncludeFields = true, NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals };
+    readonly static JsonSerializerOptions options = new()
+    {
+        IncludeFields = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new WasmBenchmarkResults.Index.IdMap.Converter() }
+    };
 
     static List<GraphPointData> list = new();
     static List<string> flavors = new();
@@ -55,48 +55,46 @@ public partial class Program
         return delimiterCell.ToString();
     }
 
-    private static async Task<List<Item>> LoadItems(string measurementsUrl)
+    private static async Task<WasmBenchmarkResults.Index> LoadIndex(string measurementsUrl)
     {
         DataDownloader dataDownloader = new();
-        using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
+        //using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
+        using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes($"http://localhost:8080/{zipFileName}"));
         using var archive = new ZipArchive(memoryStream);
         var entry = archive.GetEntry(fileName);
         using Stream readStream = entry.Open();
         using StreamReader streamReader = new StreamReader(readStream);
-        return JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
+        var index = JsonSerializer.Deserialize<WasmBenchmarkResults.Index>(streamReader.ReadToEnd(), options);
+        //index.Rebuild();
+
+        return index;
     }
 
     internal static async Task<string> LoadTests(string measurementsUrl)
     {
-        HashSet<string> flavorsSet = new();
-        HashSet<string> taskNamesSet = new();
-        var data = await LoadItems(measurementsUrl);
-        var dataLen = data.Count;
+        var data = await LoadIndex(measurementsUrl);
+        var dataLen = data.Data.Count;
         for (var i = 0; i < dataLen; i++)
         {
-            flavorsSet.Add(data[i].flavor);
-            var flavor = data[i].flavor.Replace('.', '/');
-            var logUrl = measurementsUrl + data[i].hash + "/" + flavor + gitLogFile;
-            foreach (var pair in data[i].minTimes)
+            var flavor = data.FlavorMap[data.Data[i].flavorId];
+            var logUrl = measurementsUrl + data.Data[i].hash + "/" + flavor.Replace('.', '/') + gitLogFile;
+            foreach (var pair in data.Data[i].minTimes)
             {
-                list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl, data[i].hash));
-                taskNamesSet.Add(pair.Key);
+                list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(data.MeasurementMap[pair.Key], pair.Value), logUrl, data.Data[i].hash));
             }
-            if (data[i].sizes != null)
+            if (data.Data[i].sizes != null)
             {
-                foreach (var pair in data[i].sizes)
+                foreach (var pair in data.Data[i].sizes)
                 {
                     var measurementName = "Size, " + pair.Key;
-                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>(measurementName, (double)pair.Value), logUrl, data[i].hash, "bytes"));
-                    taskNamesSet.Add(measurementName);
+                    list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(measurementName, (double)pair.Value), logUrl, data.Data[i].hash, "bytes"));
                 }
             }
         }
-        flavors = flavorsSet.ToList();
-        taskNames = taskNamesSet.ToList();
-        RequiredData neededData = new(list, flavors, taskNames);
+        RequiredData neededData = new(list, data.FlavorMap.Keys.ToList<string>(), data.MeasurementMap.Keys.ToList<string>());
         CalculatePercentages();
         var jsonData = JsonSerializer.Serialize(neededData, options);
+        await Console.Out.WriteLineAsync($"jsonData length: {jsonData.Length}");
         return jsonData;
     }
 
@@ -181,5 +179,4 @@ public partial class Program
     {
         return LoadTests(measurementsUrl);
     }
-
 }
