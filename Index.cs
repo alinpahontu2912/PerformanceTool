@@ -37,16 +37,6 @@ namespace WasmBenchmarkResults
                 }
             }
 
-            public void Rebuild()
-            {
-                names.Clear();
-                foreach (var pair in this)
-                {
-                    global::System.Console.WriteLine($"id: {pair.Value} key: {pair.Key}");
-                    names[pair.Value] = pair.Key;
-                }
-            }
-
             internal class Converter : JsonConverter<IdMap>
             {
                 public override IdMap Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -89,12 +79,6 @@ namespace WasmBenchmarkResults
                     throw new NotImplementedException();
                 }
             }
-        }
-
-        public void Rebuild()
-        {
-            FlavorMap.Rebuild();
-            MeasurementMap.Rebuild();
         }
 
         static public Index Create(SortedDictionary<DateTimeOffset, ResultsData> timedPaths)

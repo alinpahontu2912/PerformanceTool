@@ -65,7 +65,6 @@ public partial class Program
         using Stream readStream = entry.Open();
         using StreamReader streamReader = new StreamReader(readStream);
         var index = JsonSerializer.Deserialize<WasmBenchmarkResults.Index>(streamReader.ReadToEnd(), options);
-        //index.Rebuild();
 
         return index;
     }
