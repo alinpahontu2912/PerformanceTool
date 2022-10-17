@@ -666,7 +666,8 @@ async function mainJS() {
                             row.append("td")
                                 .html("N/A");
                         }
-                        prevData = currentData;
+                        if (currentData !== undefined)
+                            prevData = currentData;
                     }
                 }
             }

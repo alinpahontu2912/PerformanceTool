@@ -139,7 +139,8 @@ public partial class Program
                         percentageCell = string.Format("{0, 10}|", "N/A");
                     }
                     markdown.Append(percentageCell);
-                    prevData = currentData;
+                    if (currentData != null)
+                        prevData = currentData;
                 }
                 markdown.Append("\n");
             }
