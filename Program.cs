@@ -45,14 +45,7 @@ public partial class Program
 
     public static string CreateDelimiter(int alignmentLength)
     {
-        StringBuilder delimiterCell = new();
-        delimiterCell.Append('|');
-        for (int j = 0; j < alignmentLength; j++)
-        {
-            delimiterCell.Append('-');
-        }
-        delimiterCell.Append(":");
-        return delimiterCell.ToString();
+        return $"|{new string('-', alignmentLength)};";
     }
 
     private static async Task<WasmBenchmarkResults.Index> LoadIndex(string measurementsUrl)
