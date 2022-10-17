@@ -1,61 +1,32 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO.Compression;
-using System.IO;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Text;
-using System.Threading.Tasks;
-using System.Linq;
 using WasmBenchmarkResults;
 using System.Text.Json.Serialization;
 
 Console.WriteLine("Hello, Browser!");
 public partial class Program
 {
-    readonly static string zipFileName = "index.zip";
+    readonly static string zipFileName = "index2.zip";
     readonly static string gitLogFile = "/git-log.txt";
     readonly static string fileName = "index.json";
-    readonly static JsonSerializerOptions options = new JsonSerializerOptions { IncludeFields = true, NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals };
+    readonly static JsonSerializerOptions options = new()
+    {
+        IncludeFields = true,
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new WasmBenchmarkResults.Index.IdMap.Converter() }
+    };
 
     static List<GraphPointData> list = new();
-    static List<string> flavors = new();
-    static List<string> taskNames = new();
-
-    public static void CalculatePercentages()
-    {
-        var tasksLen = taskNames.Count;
-        var flavorsLen = flavors.Count;
-        for (int i = 0; i < tasksLen; i++)
-        {
-            for (int j = 0; j < flavorsLen; j++)
-            {
-                List<GraphPointData> filteredData = list
-                    .FindAll(point => point.taskMeasurementName == taskNames[i] && point.flavor == flavors[j]);
-                var filteredDataLen = filteredData.Count;
-                for (int k = 1; k < filteredDataLen; k++)
-                {
-                    filteredData[k].percentage = (filteredData[k - 1].minTime - filteredData[k].minTime) / filteredData[k - 1].minTime * 100;
-                }
-            }
-        }
-
-    }
 
     public static string CreateDelimiter(int alignmentLength)
     {
-        StringBuilder delimiterCell = new();
-        delimiterCell.Append('|');
-        for (int j = 0; j < alignmentLength; j++)
-        {
-            delimiterCell.Append('-');
-        }
-        delimiterCell.Append(":");
-        return delimiterCell.ToString();
+        return $"|{new string('-', alignmentLength)}:";
     }
 
-    private static async Task<List<Item>> LoadItems(string measurementsUrl)
+    private static async Task<WasmBenchmarkResults.Index> LoadIndex(string measurementsUrl)
     {
         DataDownloader dataDownloader = new();
         using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
@@ -63,38 +34,34 @@ public partial class Program
         var entry = archive.GetEntry(fileName);
         using Stream readStream = entry.Open();
         using StreamReader streamReader = new StreamReader(readStream);
-        return JsonSerializer.Deserialize<List<Item>>(streamReader.ReadToEnd(), options);
+        var index = JsonSerializer.Deserialize<WasmBenchmarkResults.Index>(streamReader.ReadToEnd(), options);
+
+        return index;
     }
 
     internal static async Task<string> LoadTests(string measurementsUrl)
     {
-        HashSet<string> flavorsSet = new();
-        HashSet<string> taskNamesSet = new();
-        var data = await LoadItems(measurementsUrl);
-        var dataLen = data.Count;
+        var data = await LoadIndex(measurementsUrl);
+        var dataLen = data.Data.Count;
         for (var i = 0; i < dataLen; i++)
         {
-            flavorsSet.Add(data[i].flavor);
-            var flavor = data[i].flavor.Replace('.', '/');
-            var logUrl = measurementsUrl + data[i].hash + "/" + flavor + gitLogFile;
-            foreach (var pair in data[i].minTimes)
+            var flavor = data.FlavorMap[data.Data[i].flavorId];
+            var logUrl = measurementsUrl + data.Data[i].hash + "/" + flavor.Replace('.', '/') + gitLogFile;
+            foreach (var pair in data.Data[i].minTimes)
             {
-                list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, pair, logUrl, data[i].hash));
-                taskNamesSet.Add(pair.Key);
+                list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(data.MeasurementMap[pair.Key], pair.Value), logUrl, data.Data[i].hash));
             }
-            if (data[i].sizes != null)
+            if (data.Data[i].sizes != null)
             {
-                foreach (var pair in data[i].sizes)
+                foreach (var pair in data.Data[i].sizes)
                 {
-                    list.Add(new GraphPointData(data[i].commitTime.ToString(CultureInfo.InvariantCulture), data[i].flavor, new KeyValuePair<string, double>("Size, " + pair.Key, (double)pair.Value), logUrl, data[i].hash, "bytes"));
+                    list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(data.MeasurementMap[pair.Key], (double)pair.Value), logUrl, data.Data[i].hash, "bytes"));
                 }
             }
         }
-        flavors = flavorsSet.ToList();
-        taskNames = taskNamesSet.ToList();
-        RequiredData neededData = new(list, flavors, taskNames);
-        CalculatePercentages();
+        RequiredData neededData = new(list, data.FlavorMap.Keys.ToList<string>(), data.MeasurementMap.Keys.ToList<string>());
         var jsonData = JsonSerializer.Serialize(neededData, options);
+        await Console.Out.WriteLineAsync($"jsonData length: {jsonData.Length}");
         return jsonData;
     }
 
@@ -106,6 +73,11 @@ public partial class Program
         flavors.ForEach(flavor => subFlavors.UnionWith(flavor.Split('.')));
         List<string> result = subFlavors.ToList();
         return JsonSerializer.Serialize(result, options);
+    }
+
+    static GraphPointData GetDataForHash(List<GraphPointData> list, string hash)
+    {
+        return list.Find(data => data.commitHash == hash);
     }
 
     [JSExport]
@@ -153,19 +125,22 @@ public partial class Program
                                && data.flavor == availableFlavors[j]
                 );
                 markdown.Append(rowName);
+                var prevData = GetDataForHash(filteredData, commits[0]);
                 for (int k = 1; k < commitLen; k++)
                 {
                     string percentageCell;
-                    var wantedResult = filteredData.Find(data => data.commitHash == commits[k]);
-                    if (wantedResult != null)
+                    var currentData = GetDataForHash(filteredData, commits[k]);
+                    if (currentData != null && prevData != null)
                     {
-                        percentageCell = string.Format("{0, 10:N3}|", wantedResult.percentage);
+                        percentageCell = string.Format("{0, 10:N3}|", (currentData.minTime/prevData.minTime - 1)*100);
                     }
                     else
                     {
                         percentageCell = string.Format("{0, 10}|", "N/A");
                     }
                     markdown.Append(percentageCell);
+                    if (currentData != null)
+                        prevData = currentData;
                 }
                 markdown.Append("\n");
             }
@@ -179,5 +154,4 @@ public partial class Program
     {
         return LoadTests(measurementsUrl);
     }
-
 }

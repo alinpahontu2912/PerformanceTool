@@ -10,6 +10,7 @@
     <PublishTrimmed>true</PublishTrimmed>
     <WasmEmitSymbolMap Condition="'$(RunAOTCompilation)' != 'true'">true</WasmEmitSymbolMap>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
