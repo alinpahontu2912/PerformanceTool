@@ -608,6 +608,15 @@ async function mainJS() {
         });
     }
 
+    function getDataForHash(rowData, hash) {
+        if (rowData === undefined)
+            return undefined;
+
+        return rowData.find(function (d) {
+            return d.commitHash === hash;
+        });
+    }
+
     function createTable(modalName, tableButton, taskNames) {
         d3.select("#" + tableButton).on("click", function () {
             d3.select(".table").remove();
@@ -643,20 +652,21 @@ async function mainJS() {
                         .attr("scope", "row")
                         .html(flavor);
                     let rowData = results.get(flavor);
+                    let prevData = getDataForHash(rowData, commits[0]);
                     for (let k = 1; k < commitsLen; k++) {
-                        let wantedTest = rowData !== undefined ? rowData.find(function (d) {
-                            return d.commitHash === commits[k];
-                        }) : undefined;
-                        if (wantedTest !== undefined) {
+                        let currentData = getDataForHash(rowData, commits[k]);
+                        if (currentData !== undefined && prevData != undefined) {
+                            let percentage = (currentData.minTime / prevData.minTime - 1)*100;
                             row.append("td")
                                 .attr("class", "text-center")
-                                .style("background-color", wantedTest.percentage < 0 ? greenShade((-1) * wantedTest.percentage) : redShade(wantedTest.percentage))
-                                .attr("title", `Test Result: ${wantedTest.minTime} \n Percentage: ${wantedTest.percentage}`)
-                                .html(`${roundAccurately(wantedTest.percentage, 3)} % `);
+                                .style("background-color", percentage < 0 ? greenShade((-1) * percentage) : redShade(percentage))
+                                .attr("title", `Test Result: ${currentData.minTime} \n Percentage: ${percentage}`)
+                                .html(`${roundAccurately(percentage, 3)} % `);
                         } else {
                             row.append("td")
                                 .html("N/A");
                         }
+                        prevData = currentData;
                     }
                 }
             }
