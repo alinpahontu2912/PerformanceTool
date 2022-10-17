@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 Console.WriteLine("Hello, Browser!");
 public partial class Program
 {
-    readonly static string zipFileName = "index.zip";
+    readonly static string zipFileName = "index2.zip";
     readonly static string gitLogFile = "/git-log.txt";
     readonly static string fileName = "index.json";
     readonly static JsonSerializerOptions options = new()
@@ -58,8 +58,7 @@ public partial class Program
     private static async Task<WasmBenchmarkResults.Index> LoadIndex(string measurementsUrl)
     {
         DataDownloader dataDownloader = new();
-        //using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
-        using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes($"http://localhost:8080/{zipFileName}"));
+        using var memoryStream = new MemoryStream(await dataDownloader.downloadAsBytes(measurementsUrl + zipFileName));
         using var archive = new ZipArchive(memoryStream);
         var entry = archive.GetEntry(fileName);
         using Stream readStream = entry.Open();
@@ -85,8 +84,7 @@ public partial class Program
             {
                 foreach (var pair in data.Data[i].sizes)
                 {
-                    var measurementName = "Size, " + pair.Key;
-                    list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(measurementName, (double)pair.Value), logUrl, data.Data[i].hash, "bytes"));
+                    list.Add(new GraphPointData(data.Data[i].commitTime.ToString(CultureInfo.InvariantCulture), flavor, new KeyValuePair<string, double>(data.MeasurementMap[pair.Key], (double)pair.Value), logUrl, data.Data[i].hash, "bytes"));
                 }
             }
         }
